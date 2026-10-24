@@ -144,7 +144,7 @@ export default function Onboarding() {
         {top}
         <div style={{ maxWidth: 520, margin: "0 auto", padding: "40px var(--gutter) 140px" }}>
           <h1 className="h-l" style={{ color: "#fff" }}>Pick the projects you want to join.</h1>
-          <p className="small" style={{ color: "#ddd", marginTop: 6 }}>Choose all that apply. The lead will see you on the board.</p>
+          <p className="small" style={{ color: "#ddd", marginTop: 6 }}>Choose all that apply. The project lead will assign you your first task.</p>
           <div className="choices" style={{ marginTop: 22 }}>
             {db.projects.filter((p) => p.series === "Community" || me.series.includes(p.series)).concat(db.projects.filter((p) => !me.series.includes(p.series) && p.series !== "Community")).map((p) => (
               <button key={p.id} className="choice" aria-pressed={picked.includes(p.id)} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>

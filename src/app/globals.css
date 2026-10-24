@@ -546,3 +546,4 @@ img.float-img { height: auto; }
   .home .dodont li { font-size: 22px; }
   .home .home-row { max-width: none; margin-top: 0; }
 }
+.sticky.locked { cursor: pointer; }

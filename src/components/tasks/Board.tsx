@@ -21,6 +21,7 @@ import { useApp, STATUS_LABEL } from "@/lib/store";
 import { fmt } from "@/lib/dates";
 import { initials, projectColor } from "@/lib/colors";
 import type { Task, TaskStatus } from "@/lib/types";
+import { canCreateTasks, taskRights } from "@/lib/permissions";
 
 export const COLUMNS: TaskStatus[] = ["idea", "todo", "doing", "review", "done"];
 
@@ -56,11 +57,16 @@ export function Board({ tasks, lanes, mode, onOpen, defaultProject }: Props) {
   const onEnd = (e: DragEndEvent) => {
     setActive(null);
     if (!e.over) return;
+    const t = tasks.find((x) => x.id === e.active.id);
+    if (!t) return;
+    const rights = taskRights(me, t);
+    if (!rights.edit) return;
     const [lane, status] = String(e.over.id).split("|") as [string, TaskStatus];
     const to: Parameters<typeof moveTask>[1] = { status };
-    if (mode === "project") to.projectId = lane;
-    if (mode === "person") to.assigneeId = lane === "_none" ? null : lane;
-    moveTask(String(e.active.id), to);
+    // Members can only change status; dropping into another lane keeps owner and project.
+    if (mode === "project" && rights.move) to.projectId = lane;
+    if (mode === "person" && rights.reassign) to.assigneeId = lane === "_none" ? null : lane;
+    moveTask(t.id, to);
   };
 
   return (
@@ -127,7 +133,7 @@ function Cell(props: {
   meId: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: props.id });
-  const { addTask, today } = useApp();
+  const { addTask, today, me } = useApp();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const create = () => {
@@ -169,7 +175,7 @@ function Cell(props: {
             }
           }}
         />
-      ) : (
+      ) : canCreateTasks(me) && (
         <button className="kb-add" onClick={() => setAdding(true)} aria-label={`Add a task to ${STATUS_LABEL[props.status]}`}>+</button>
       )}
     </div>
@@ -177,21 +183,23 @@ function Cell(props: {
 }
 
 function DraggableSticky({ t, onOpen, hidden }: { t: Task; onOpen: (id: string) => void; hidden: boolean }) {
-  const { attributes, listeners, setNodeRef } = useDraggable({ id: t.id });
+  const { me } = useApp();
+  const locked = !taskRights(me, t).edit;
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: t.id, disabled: locked });
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} style={{ opacity: hidden ? 0.25 : 1 }} onClick={() => onOpen(t.id)}>
-      <Sticky t={t} />
+      <Sticky t={t} locked={locked} />
     </div>
   );
 }
 
-export function Sticky({ t, lifted }: { t: Task; lifted?: boolean }) {
+export function Sticky({ t, lifted, locked }: { t: Task; lifted?: boolean; locked?: boolean }) {
   const { db, member, today } = useApp();
   const ids = db.projects.map((p) => p.id);
   const who = member(t.assigneeId);
   const late = t.status !== "done" && t.due && t.due < today;
   return (
-    <div className={`sticky ${lifted ? "lifted" : ""} ${t.status === "done" ? "is-done" : ""}`} style={{ background: projectColor(ids, t.projectId) }}>
+    <div className={`sticky ${lifted ? "lifted" : ""} ${locked ? "locked" : ""} ${t.status === "done" ? "is-done" : ""}`} style={{ background: projectColor(ids, t.projectId) }}>
       <div className="st-title">{t.title}</div>
       <div className="st-meta">
         <span className={late ? "late" : ""}>{t.due ? (late ? "Late " : "") + fmt.short(t.due) : ""}{t.priority === "high" && t.status !== "done" ? " ●" : ""}</span>

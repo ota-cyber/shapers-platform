@@ -1,5 +1,7 @@
 # Frontend (branch `UI`)
 
+> **Backend builders: read [PERMISSIONS.md](PERMISSIONS.md) first.** GO! and Impact members may only edit tasks assigned to them; Core members and admins can edit every task. Admin is a separate role, unrelated to tier. The backend must enforce this.
+
 Next.js 15 (App Router) + TypeScript, plain CSS. No backend yet: every screen runs on a client-side store seeded from the hackathon sandbox. The backend replaces the store's data and actions; the screens don't change.
 
 ```bash

@@ -258,19 +258,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const m = db.members.find((x) => x.id === memberId)!;
           m.onboarding = { ...(m.onboarding ?? {}), [step]: v };
         }),
+      // Records interest only. Members can't pick up tasks themselves; the project lead assigns the first one.
       joinProject: (memberId, projectId) =>
         mutate((db) => {
-          const open = db.tasks.find((t) => t.projectId === projectId && !t.assigneeId && t.status !== "done");
-          if (open) {
-            open.assigneeId = memberId;
-            open.history.push({ at: now.toISOString(), by: memberId, what: "picked up" });
-          } else {
-            db.tasks.push({
-              id: uid(), projectId, title: "Say hi to the project lead", notes: "", assigneeId: memberId, status: "todo",
-              priority: "normal", start: today, due: addDays(today, 7), doneAt: null, history: [{ at: now.toISOString(), by: memberId, what: "joined project" }],
-            });
-          }
           const m = db.members.find((x) => x.id === memberId)!;
+          m.wantsProjects = Array.from(new Set([...(m.wantsProjects ?? []), projectId]));
           m.onboarding = { ...(m.onboarding ?? {}), project: true };
         }),
       requestPause: (from, to, reason) =>

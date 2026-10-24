@@ -8,13 +8,14 @@ import { useApp } from "@/lib/store";
 import { addDays, daysBetween, fmt, weekStart } from "@/lib/dates";
 import { projectColor } from "@/lib/colors";
 import type { Task } from "@/lib/types";
+import { taskRights } from "@/lib/permissions";
 
 const DAYS = 56;
 
 type Drag = { id: string; mode: "move" | "start" | "end" | "create"; x0: number; start: string; due: string; moved: boolean };
 
 export function Timeline({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string) => void }) {
-  const { db, today, setTaskDates } = useApp();
+  const { db, me, today, setTaskDates } = useApp();
   const from = addDays(weekStart(today), -14);
   const days = Array.from({ length: DAYS }, (_, i) => addDays(from, i));
   const [dw, setDw] = useState(26);
@@ -33,6 +34,10 @@ export function Timeline({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string
 
   const begin = (e: React.PointerEvent, t: Task, mode: Drag["mode"]) => {
     e.stopPropagation();
+    if (!taskRights(me, t).edit) {
+      onOpen(t.id);
+      return;
+    }
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {}
@@ -112,7 +117,7 @@ export function Timeline({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: string
                           <span className="tl-h tl-h-r" onPointerDown={(e) => begin(e, t, "end")} />
                         </div>
                       ) : (
-                        <span className="tl-hint">Drag here to schedule</span>
+                        <span className="tl-hint">{taskRights(me, t).edit ? "Drag here to schedule" : "Not scheduled"}</span>
                       )}
                     </div>
                   </div>

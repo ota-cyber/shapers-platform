@@ -41,6 +41,8 @@ export interface Member {
   /** null once onboarding is finished (or for members who joined before the platform) */
   onboarding: Partial<Record<OnboardingStepId, boolean>> | null;
   seeded?: boolean; // demo-only member, not in the sandbox roster
+  /** projects picked during onboarding; the project lead assigns the first task */
+  wantsProjects?: string[];
 }
 
 /** Weekly total, the shape of the sandbox hours sheet. Sessions roll up into it. */

@@ -9,6 +9,7 @@ import type { Priority, TaskStatus } from "@/lib/types";
 import { Board, COLUMNS, type Lane, type LaneMode } from "@/components/tasks/Board";
 import { Timeline } from "@/components/tasks/Timeline";
 import { Sheet } from "@/components/ui";
+import { canCreateTasks, taskRights } from "@/lib/permissions";
 
 const PRI: Record<Priority, string> = { high: "High", normal: "Normal", low: "Low" };
 
@@ -62,7 +63,7 @@ function Tasks() {
           <Toggle value={view} onChange={setView} items={[["board", "Board"], ["timeline", "Timeline"]]} />
           <Toggle value={scope} onChange={setScope} items={[["all", "Everyone"], ["mine", "Mine"]]} />
           {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
-          <button className="btn" onClick={() => setAdding(true)}>New task</button>
+          {canCreateTasks(me) && <button className="btn" onClick={() => setAdding(true)}>New task</button>}
         </div>
       </div>
 
@@ -93,7 +94,8 @@ function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const t = db.tasks.find((x) => x.id === id);
   if (!t) return null;
   const p = db.projects.find((x) => x.id === t.projectId)!;
-  const canEdit = me.admin || t.assigneeId === me.id || p.leadId === me.id || !t.assigneeId;
+  const rights = taskRights(me, t);
+  const canEdit = rights.edit;
   const field = { border: "1px solid var(--line-strong)", height: 32, padding: "0 8px", fontFamily: "var(--mono)", fontSize: 12, background: "var(--paper)" } as const;
   return (
     <Sheet title={p.name} onClose={onClose} left="‹ Back">
@@ -118,17 +120,24 @@ function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) {
           <input type="date" value={t.due ?? ""} disabled={!canEdit} style={field} onChange={(e) => e.target.value && setTaskDates(t.id, t.start && t.start <= e.target.value ? t.start : e.target.value, e.target.value)} aria-label="Due" />
         </div>
         <div><span className="k">Project</span>
-          <select value={t.projectId} disabled={!canEdit} style={field} onChange={(e) => moveTask(t.id, { projectId: e.target.value })}>
+          <select value={t.projectId} disabled={!rights.move} style={field} onChange={(e) => moveTask(t.id, { projectId: e.target.value })}>
             {db.projects.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </div>
         <div><span className="k">With</span>
-          <select value={t.assigneeId ?? ""} disabled={!canEdit} style={field} onChange={(e) => moveTask(t.id, { assigneeId: e.target.value || null })}>
+          <select value={t.assigneeId ?? ""} disabled={!rights.reassign} style={field} onChange={(e) => moveTask(t.id, { assigneeId: e.target.value || null })}>
             <option value="">Nobody yet</option>
             {[...db.members].sort((a, b) => a.name.localeCompare(b.name)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          {!t.assigneeId && <button className="btn-s on" onClick={() => moveTask(t.id, { assigneeId: me.id })}>Take it</button>}
+
         </div>
+      </div>
+      <div className="pad" style={{ paddingTop: 18 }}>
+        <div className="field">
+          <label htmlFor="task-notes">Notes</label>
+          <textarea id="task-notes" key={t.id} defaultValue={t.notes} disabled={!canEdit} placeholder={canEdit ? "Details, links, what's left…" : "Only the person this is assigned to can add notes."} onBlur={(e) => e.target.value !== t.notes && updateTask(t.id, { notes: e.target.value }, "notes updated")} />
+        </div>
+        {!canEdit && <p className="small muted" style={{ marginTop: 8 }}>{t.assigneeId ? "This task is assigned to someone else. You can see it, but only they and Core members can change it." : "Not assigned yet. A Core member assigns it before anyone works on it."}</p>}
       </div>
       <div className="label m pad" style={{ paddingTop: 22, paddingBottom: 10 }}>History</div>
       <div className="rows">
