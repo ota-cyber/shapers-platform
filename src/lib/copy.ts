@@ -3,7 +3,7 @@
 
 import type { Db, Meeting, Member, Task } from "./types";
 import type { Standing } from "./tiers";
-import { addDays, fmt, hoursLabel, weekStart } from "./dates";
+import { hoursLabel } from "./dates";
 
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => WORDS[n] ?? String(n);
@@ -38,53 +38,6 @@ export function myOpenTasks(db: Db, memberId: string): Task[] {
   return db.tasks
     .filter((t) => t.assigneeId === memberId && t.status !== "done")
     .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
-}
-
-export interface Line {
-  e: string;
-  pre: string;
-  keys: { label: string; href: string }[];
-}
-
-export function emojiLines(db: Db, s: Standing, today: string): Line[] {
-  const power: Line["keys"] = [];
-  const pressure: Line["keys"] = [];
-  const trouble: Line["keys"] = [];
-  const tasks = myOpenTasks(db, s.member.id);
-  const overdue = tasks.filter((t) => t.due && t.due < today);
-  const soon = tasks.filter((t) => t.due && t.due >= today && t.due <= addDays(today, 7));
-  const doneWeek = db.tasks.filter((t) => t.assigneeId === s.member.id && t.doneAt && t.doneAt >= weekStart(today));
-
-  (s.toKeep === 0 ? power : s.avg4 < s.target * 0.75 ? trouble : pressure).push({ label: "hours", href: "/you?tab=chart" });
-  (s.attendance.unexcused > 0 ? trouble : s.attendanceRate >= 0.9 ? power : pressure).push({ label: "meetings", href: "/you?tab=meetings" });
-  if (overdue.length) trouble.push({ label: "deadlines", href: "/tasks" });
-  else if (soon.length) pressure.push({ label: "this week's tasks", href: "/tasks" });
-  if (doneWeek.length) power.push({ label: "finishing things", href: "/tasks" });
-  if (s.streak >= 3) power.push({ label: "consistency", href: "/you?tab=chart" });
-  if (s.member.buddyId) (s.toKeep > 0 && s.streak === 0 ? pressure : power).push({ label: "your buddy", href: `/team/${s.member.buddyId}` });
-
-  const out: Line[] = [];
-  if (power.length) out.push({ e: "🌱", pre: "Power in", keys: power });
-  if (pressure.length) out.push({ e: "🔥", pre: "Pressure in", keys: pressure });
-  if (trouble.length) out.push({ e: "🚫", pre: "Trouble with", keys: trouble });
-  return out;
-}
-
-export function narrative(db: Db, s: Standing): string[] {
-  const t = myOpenTasks(db, s.member.id)[0];
-  const p1 =
-    s.toKeep > 0
-      ? `This week you've logged ${hoursLabel(s.thisWeek)} of your ${s.target}. You don't have to be heroic about the rest; you have to be at the Hub for ${hoursLabel(s.toKeep)}.`
-      : `You've kept ${s.member.tier} this week with ${hoursLabel(s.thisWeek)}. Rest is part of the job. So is showing up next Monday.`;
-  const p2 = t
-    ? `Your nearest task is "${t.title}"${t.due ? `, due ${fmt.short(t.due)}` : ""}. Finish one thing before you start the next.`
-    : "Nothing is assigned to you. That's a question to bring to your buddy, not a holiday.";
-  const p3 = s.nextRule
-    ? s.member.tier === "GO!"
-      ? `Month ${Math.min(6, Math.max(1, Math.ceil(s.monthsInTier)))} of the six GO! months. Impact is a pace of ${s.nextRule.weeklyHours} h a week; leadership decides when you're there.`
-      : `Core isn't a number. It's being recognised as the person who's always there.`
-    : "You're Core. The tiers below are watching how you do it.";
-  return [p1, p2, p3];
 }
 
 export function memberSummary(s: Standing, viewer: Member): string {

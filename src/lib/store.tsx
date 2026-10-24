@@ -10,7 +10,7 @@ import { seedDb, ONBOARDING_STEPS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 
-const KEY = "shapers-ui-v1";
+const KEY = "shapers-ui-v2";
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -38,7 +38,9 @@ interface Ctx {
   logHours: (date: string, hours: number, note?: string) => "logged" | "requested";
   resolveBackfill: (id: string, approve: boolean) => void;
   updateTask: (id: string, patch: Partial<Task>, what: string) => void;
-  addTask: (t: { projectId: string; title: string; assigneeId: string | null; due: string | null; priority: Priority }) => void;
+  addTask: (t: { projectId: string; title: string; assigneeId: string | null; due: string | null; priority: Priority; status?: TaskStatus; start?: string | null }) => void;
+  moveTask: (id: string, to: { status?: TaskStatus; projectId?: string; assigneeId?: string | null }) => void;
+  setTaskDates: (id: string, start: string, due: string) => void;
   addProject: (p: Omit<Project, "id">) => void;
   meetingClockIn: (meetingId: string, state: "present" | "remote") => void;
   recordAttendance: (meetingId: string, memberId: string, state: AttendanceState) => void;
@@ -190,11 +192,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTask: (t) =>
         mutate((db) =>
           db.tasks.push({
-            id: uid(), notes: "", status: "todo", doneAt: null, ...t,
+            id: uid(), notes: "", doneAt: null, ...t, status: t.status ?? "todo", start: t.start ?? (t.due ? addDays(t.due, -5) : null),
             history: [{ at: now.toISOString(), by: me.id, what: "created" }],
           }),
         ),
       addProject: (p) => mutate((db) => db.projects.push({ ...p, id: uid() })),
+      moveTask: (id, to) =>
+        mutate((db) => {
+          const t = db.tasks.find((x) => x.id === id);
+          if (!t) return;
+          const what: string[] = [];
+          if (to.status && to.status !== t.status) {
+            what.push(`moved to ${STATUS_LABEL[to.status]}`);
+            t.status = to.status;
+            t.doneAt = to.status === "done" ? now.toISOString().slice(0, 10) : null;
+          }
+          if (to.projectId && to.projectId !== t.projectId) {
+            what.push(`moved to ${db.projects.find((p) => p.id === to.projectId)?.name}`);
+            t.projectId = to.projectId;
+          }
+          if (to.assigneeId !== undefined && to.assigneeId !== t.assigneeId) {
+            what.push(to.assigneeId ? `handed to ${db.members.find((m) => m.id === to.assigneeId)?.name}` : "unassigned");
+            t.assigneeId = to.assigneeId;
+          }
+          if (what.length) t.history.push({ at: now.toISOString(), by: me.id, what: what.join(", ") });
+        }),
+      setTaskDates: (id, start, due) =>
+        mutate((db) => {
+          const t = db.tasks.find((x) => x.id === id);
+          if (!t || (t.start === start && t.due === due)) return;
+          t.start = start;
+          t.due = due;
+          t.history.push({ at: now.toISOString(), by: me.id, what: `dates ${start} → ${due}` });
+        }),
       meetingClockIn: (meetingId, state) =>
         mutate((db) => setAttendance(db, meetingId, me.id, state)),
       recordAttendance: (meetingId, memberId, state) =>
@@ -208,7 +238,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (state === "unexcused" && m.series === "Community" && who.tier === "GO!" && !db.tasks.some((t) => t.title === title && t.assigneeId === memberId)) {
             db.tasks.push({
               id: uid(), projectId: "community-night", title, notes: "Missed Community meeting: read the minutes and pick up one general task within 14 days.",
-              assigneeId: memberId, status: "todo", priority: "normal", due: addDays(date, 14), doneAt: null,
+              assigneeId: memberId, status: "todo", priority: "normal", start: date, due: addDays(date, 14), doneAt: null,
               history: [{ at: now.toISOString(), by: "rules", what: "created by the GO! absence rule" }],
             });
           }
@@ -237,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             db.tasks.push({
               id: uid(), projectId, title: "Say hi to the project lead", notes: "", assigneeId: memberId, status: "todo",
-              priority: "normal", due: addDays(today, 7), doneAt: null, history: [{ at: now.toISOString(), by: memberId, what: "joined project" }],
+              priority: "normal", start: today, due: addDays(today, 7), doneAt: null, history: [{ at: now.toISOString(), by: memberId, what: "joined project" }],
             });
           }
           const m = db.members.find((x) => x.id === memberId)!;
@@ -302,3 +332,11 @@ export function attendanceOf(db: Db, meetingId: string, memberId: string): Atten
 }
 
 export type { TaskStatus };
+
+export const STATUS_LABEL: Record<TaskStatus, string> = {
+  idea: "Idea lane",
+  todo: "Priority lane",
+  doing: "In progress",
+  review: "Validation",
+  done: "Done",
+};

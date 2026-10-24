@@ -3,6 +3,7 @@
 // onboarding). The backend replaces all of this.
 
 import sandbox from "@/data/sandbox.json";
+import { addDays } from "./dates";
 import type { Db, Member, OnboardingStepId, Project, Series, Task, TaskStatus, Priority } from "./types";
 
 const AVATARS = ["bust", "stone", "apple", "moon", "dove", "hands", "compass", "sprout", "book", "key"];
@@ -64,7 +65,7 @@ const TASKS: T[] = [
   ["summer-school", "Budget v1", "blaz.bizjak", "todo", "normal", "2026-11-13", null],
   ["erasmus", "Partner letters of intent", "ana.kovac", "doing", "high", "2026-10-28", null],
   ["erasmus", "Write the impact section", "katja.lesjak", "todo", "high", "2026-11-02", null],
-  ["erasmus", "Budget table in the EU template", "filip.rozman", "doing", "normal", "2026-11-04", null],
+  ["erasmus", "Budget table in the EU template", "filip.rozman", "review", "normal", "2026-11-04", null],
   ["erasmus", "Read the programme guide", "tim.vrhovnik", "todo", "normal", "2026-10-31", null],
   ["mol-grant", "Check eligibility criteria", "jan.potocnik", "done", "normal", "2026-10-10", "2026-10-09"],
   ["mol-grant", "Activity plan for 2027", "eva.vidmar", "todo", "normal", "2026-11-10", null],
@@ -73,8 +74,8 @@ const TASKS: T[] = [
   ["talks-14", "Event page and sign-up form", "petra.jerman", "todo", "normal", "2026-11-03", null],
   ["talks-14", "Speaker brief template", "petra.jerman", "done", "low", "2026-10-17", "2026-10-16"],
   ["speakers", "List 20 possible speakers", "matic.kos", "todo", "normal", "2026-11-07", null],
-  ["speakers", "Outreach email draft", "jan.potocnik", "todo", "low", null, null],
-  ["website", "Wireframes for the events page", "rok.golob", "doing", "normal", "2026-10-30", null],
+  ["speakers", "Outreach email draft", "jan.potocnik", "idea", "low", null, null],
+  ["website", "Wireframes for the events page", "rok.golob", "review", "normal", "2026-10-30", null],
   ["website", "Collect project photos", "zala.turk", "todo", "normal", "2026-11-05", null],
   ["website", "Set up hosting", "nejc.kralj", "done", "normal", "2026-10-14", "2026-10-13"],
   ["website", "Write the About page", "lea.zorman", "todo", "normal", "2026-11-04", null],
@@ -88,7 +89,10 @@ const TASKS: T[] = [
   ["newsletter", "Post: Shape Talks #14 teaser", "neza.oblak", "todo", "normal", "2026-10-27", null],
   ["community-night", "Pick a date", "ana.kovac", "done", "normal", "2026-10-15", "2026-10-14"],
   ["community-night", "Invite alumni", "luka.novak", "todo", "normal", "2026-11-14", null],
-  ["community-night", "Catering quotes", null, "todo", "low", "2026-11-20", null],
+  ["community-night", "Catering quotes", null, "idea", "low", "2026-11-20", null],
+  ["summer-school", "Partner with a hostel for housing", null, "idea", "normal", null, null],
+  ["newsletter", "Monthly alumni spotlight", null, "idea", "low", null, null],
+  ["talks-14", "Ask a sponsor for drinks", "eva.vidmar", "review", "low", "2026-10-26", null],
 ];
 
 export function seedDb(): Db {
@@ -113,6 +117,7 @@ export function seedDb(): Db {
     assigneeId,
     status,
     priority,
+    start: due ? addDays(due, -(4 + (i % 4) * 3)) : null,
     due,
     doneAt,
     history: [

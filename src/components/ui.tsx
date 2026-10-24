@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { imgSrc } from "@/lib/assets";
 import type { Member } from "@/lib/types";
@@ -107,12 +106,3 @@ export function Meter({ value, max, mark }: { value: number; max: number; mark?:
   );
 }
 
-export function TheEnd({ line, href }: { line: string; href: string }) {
-  return (
-    <div className="the-end">
-      <div className="dust" />
-      <div className="h-l">The end</div>
-      <Link className="link" href={href} style={{ display: "inline-block", marginTop: 18 }}>{line}</Link>
-    </div>
-  );
-}

@@ -4,17 +4,14 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
-import { headline, narrative } from "@/lib/copy";
-import { fmt, hoursLabel, addDays } from "@/lib/dates";
-import { EmojiLines, LogHours, NextMeeting, useHeadline } from "@/components/blocks";
-import { AttendanceRecord, Badges, PathCard, ProfileHead, TierChart, TierRules, TiersTable, WeekStrip } from "@/components/profile";
-import { Img, Sheet, Tabs, Useful } from "@/components/ui";
+import { fmt, addDays } from "@/lib/dates";
+import { useHeadline } from "@/components/blocks";
+import { Badges, PathCard, ProfileHead } from "@/components/profile";
+import { Sheet, Tabs } from "@/components/ui";
 
-type Tab = "updates" | "chart" | "meetings" | "settings";
+type Tab = "overview" | "settings";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "updates", label: "Updates" },
-  { id: "chart", label: "Chart" },
-  { id: "meetings", label: "Meetings" },
+  { id: "overview", label: "Overview" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -27,108 +24,28 @@ export default function YouPage() {
 }
 
 function You() {
-  const { my, me, db } = useApp();
+  const { my } = useApp();
   const params = useSearchParams();
   const router = useRouter();
-  const tab = (params.get("tab") as Tab) || "updates";
+  const tab = (params.get("tab") as Tab) === "settings" ? "settings" : "overview";
   const setTab = (t: Tab) => router.replace(`/you?tab=${t}`, { scroll: false });
-  const s = db.sessions.find((x) => x.memberId === me.id);
   const line = useHeadline();
-
-  const body = (
-    <>
-      {tab === "updates" && <Updates />}
-      {tab === "chart" && (
-        <>
-          <TierChart s={my} />
-          <div className="sect center">
-            <div className="h-l">In Shapers, each tier asks something:</div>
-          </div>
-          <TiersTable current={me.tier} />
-          <div style={{ padding: "26px var(--gutter)" }}><TierRules tier={me.tier} /></div>
-        </>
-      )}
-      {tab === "meetings" && (
-        <>
-          <NextMeeting />
-          <AttendanceRecord memberId={me.id} />
-        </>
-      )}
-      {tab === "settings" && <Settings />}
-    </>
-  );
-
   return (
-    <>
-      <div className="page hide-d">
-        <ProfileHead s={my} you />
-        <Tabs items={TABS} value={tab} onChange={setTab} dot={s ? "chart" : undefined} />
-        {tab === "updates" && <WeekStrip memberId={me.id} />}
-        {body}
-      </div>
-      <div className="page hide-m">
-        <h1 className="desk-headline">{line}</h1>
-        <div className="desk-grid two">
-          <div className="panel sticky">
-            <PathCard s={my} href="/you?tab=chart" />
+    <div className="page">
+      <ProfileHead s={my} you />
+      <Tabs items={TABS} value={tab} onChange={setTab} />
+      {tab === "overview" ? (
+        <>
+          <section className="sect"><h1 className="h-xl">{line}</h1></section>
+          <div className="desk-grid two-even">
+            <PathCard s={my} href="/hours" />
+            <Badges s={my} />
           </div>
-          <div className="panel">
-            <Tabs items={TABS} value={tab} onChange={setTab} dot={s ? "chart" : undefined} />
-            {body}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Updates() {
-  const { my, me, db, today } = useApp();
-  const [log, setLog] = useState(false);
-  const clocked = db.sessions.some((x) => x.memberId === me.id);
-  const [p1, p2, p3] = narrative(db, my);
-  return (
-    <>
-      <section className="sect">
-        <div className="h-l hide-d" style={{ marginBottom: 16 }}>{headline(my, clocked, today)}</div>
-        <EmojiLines s={my} />
-        <Img name="stone" className="float-img" />
-        <div className="body" style={{ marginTop: 6 }}><p>{p1}</p><p>{p2}</p></div>
-        <div style={{ marginTop: 18 }}><Useful /></div>
-      </section>
-      <section className="sect">
-        <div className="label">Streak</div>
-        <div className="h-l" style={{ marginTop: 10 }}>{my.streak ? `${my.streak} week${my.streak === 1 ? "" : "s"} at ${me.tier}` : "A fresh start"}</div>
-        <p className="body" style={{ marginTop: 8 }}>
-          {my.streak
-            ? `Every week you reach ${my.target} h adds one. Pause weeks hold it where it is; they never break it.`
-            : `Reach ${my.target} h this week and the count begins. Nobody is keeping score but you and the wall chart.`}
-        </p>
-        <Link href="/you?tab=chart" className="arrow" style={{ marginTop: 12 }}>Details →</Link>
-      </section>
-      <PathCard s={my} />
-      <section className="sect">
-        <div className="label">{my.nextRule ? "The long view" : "Core"}</div>
-        <p className="h-m" style={{ marginTop: 10 }}>{p3}</p>
-      </section>
-      <Badges s={my} />
-      <section className="sect">
-        <div className="mono-lc muted">Today — {fmt.monthDay(today)}</div>
-        <div className="between" style={{ marginTop: 6 }}>
-          <div>
-            <div className="h-m">Your hours, week by week</div>
-            <p className="small faint">Six weeks of history, plus this one. {hoursLabel(my.avg4)} a week on average lately.</p>
-          </div>
-          <Link href="/you?tab=chart" className="go">→</Link>
-        </div>
-      </section>
-      {me.tier === "Core" && (
-        <div className="center" style={{ padding: "34px 0 40px" }}>
-          <button className="btn" onClick={() => setLog(true)}>Log hours you forgot</button>
-        </div>
+        </>
+      ) : (
+        <Settings />
       )}
-      {log && <LogHours onClose={() => setLog(false)} />}
-    </>
+    </div>
   );
 }
 
@@ -157,7 +74,7 @@ function Settings() {
       </div>
       <div className="group-h">Support</div>
       <div className="rows">
-        <Link href="/you?tab=chart"><span className="k">Tier rules</span><span className="go">→</span></Link>
+        <Link href="/hours"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
       </div>
       <div className="group-h">Demo</div>

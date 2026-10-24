@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
-import { elapsed } from "@/lib/dates";
-import { ProfileHead, WeekStrip } from "./profile";
+import { elapsed, hoursLabel } from "@/lib/dates";
+import { Avatar, Meter, handle } from "./ui";
 
 const NAV = [
   { href: "/", label: "Home" },
-  { href: "/team", label: "Team", admin: true },
   { href: "/tasks", label: "Tasks" },
-  { href: "/you", label: "You" },
+  { href: "/hours", label: "Hours" },
+  { href: "/meetings", label: "Meetings" },
+  { href: "/team", label: "Team", admin: true },
 ];
 
 const DEMO_PEOPLE = [
@@ -50,8 +51,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <button className="side-close" onClick={close} aria-label="Close menu">✕</button>
         </div>
         <div className="side-me">
-          <Link href="/you" onClick={close} aria-label="Your profile"><ProfileHead s={my} you /></Link>
-          <WeekStrip memberId={me.id} />
+          <Link href="/you" onClick={close} className="side-id" aria-label="Open your profile">
+            <Avatar m={me} size="m" />
+            <span>
+              <span className="side-name">{me.name}</span>
+              <span className="side-handle">{handle(me)} · {me.tier}</span>
+            </span>
+          </Link>
+          <div className="side-prog">
+            <div className="label m">This week</div>
+            <div className="sp-num"><span className="serif">{hoursLabel(my.thisWeek).replace(" h", "")}</span> / {my.target} h</div>
+            <Meter value={my.thisWeek} max={Math.max(my.target, my.thisWeek)} mark={my.target} />
+            <div className="sp-line">↑ {my.streak}-week streak{my.toKeep > 0 ? ` · ${hoursLabel(my.toKeep)} to go` : " · week made"}</div>
+            {my.nextRule && (
+              <>
+                <div className="label m" style={{ marginTop: 14 }}>Path to {my.nextRule.id}</div>
+                <ul className="sp-path">
+                  {me.tier === "GO!" && <li className={my.readiness.time ? "ok" : ""}>Month {Math.max(1, Math.min(6, Math.ceil(my.monthsInTier)))} of 6 in GO!</li>}
+                  <li className={my.readiness.hours ? "ok" : ""}>{Math.round(my.consistency * 100)}% of weeks at {my.target} h</li>
+                  <li className={my.readiness.attendance ? "ok" : ""}>{Math.round(my.attendanceRate * 100)}% of meetings attended</li>
+                </ul>
+              </>
+            )}
+          </div>
         </div>
         <nav className="side-nav">
           {NAV.filter((n) => !n.admin || me.admin).map((n) => (

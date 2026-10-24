@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useApp, attendanceOf } from "@/lib/store";
-import { addDays, elapsed, fmt, greeting, hoursLabel, isoDate, weekStart } from "@/lib/dates";
-import { emojiLines, headline, myOpenTasks, nextMeeting } from "@/lib/copy";
-import type { Standing } from "@/lib/tiers";
+import { addDays, fmt, hoursLabel } from "@/lib/dates";
+import { headline, nextMeeting } from "@/lib/copy";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { Avatar, Img, Sheet, Signs, first, handle } from "./ui";
 
@@ -18,88 +17,6 @@ export function useHeadline(): string {
     return `You're ${n} of ${ONBOARDING_STEPS.length} steps into Shapers. The rest is the fun part.`;
   }
   return headline(my, db.sessions.some((s) => s.memberId === me.id), today);
-}
-
-export function Glance({ desk }: { desk?: boolean }) {
-  const { me, now, today, db, clockIn, clockOut, onboardingDone } = useApp();
-  const session = db.sessions.find((s) => s.memberId === me.id);
-  const onboarding = me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
-  const intro = (
-    <p className="intro">
-      {greeting(now)}, <Link href="/you">{handle(me)}</Link>. It&apos;s {fmt.weekday(now)}, {fmt.monthDay(now)}.{" "}
-      {onboarding ? "Your first weeks at a glance:" : "Your week at a glance:"}
-    </p>
-  );
-
-  // Do: what's still open. Meet: meetings left this week (Mon–Sun).
-  const done = onboardingDone(me);
-  const doItems: { key: string; label: string; href: string }[] = onboarding
-    ? ONBOARDING_STEPS.filter((s) => !done[s.id]).slice(0, 3).map((s) => ({ key: s.id, label: s.title, href: "/onboarding" }))
-    : myOpenTasks(db, me.id).slice(0, 3).map((t) => ({ key: t.id, label: t.title, href: `/tasks?task=${t.id}` }));
-  const weekEnd = addDays(weekStart(today), 6);
-  const meets = db.meetings
-    .filter((m) => m.memberIds.includes(me.id) && new Date(m.end) > now && isoDate(new Date(m.start)) <= weekEnd)
-    .sort((a, b) => a.start.localeCompare(b.start));
-  const nextOne = meets.length ? null : nextMeeting(db, me.id, now);
-  const day = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
-
-  const lists = (
-    <div className="dodont">
-      <div>
-        <div className="lbl">Do</div>
-        <ul>
-          {doItems.map((d) => <li key={d.key}><Link href={d.href}>{d.label}</Link></li>)}
-          {!doItems.length && <li className="muted">Nothing pending</li>}
-        </ul>
-      </div>
-      <div>
-        <div className="lbl">Meet</div>
-        <ul>
-          {meets.map((m) => <li key={m.id}><Link href={`/meetings/${m.id}`}>{m.series}, {day(m.start)} {fmt.time(m.start)}</Link></li>)}
-          {!meets.length && <li className="muted">Nothing left this week</li>}
-        </ul>
-        {nextOne && <div className="next-meet">Next: {nextOne.series}, {day(nextOne.start)} {fmt.short(nextOne.start)}</div>}
-      </div>
-    </div>
-  );
-
-  const actions = onboarding ? (
-    <>
-      <Link href="/onboarding" className="btn" style={{ marginTop: 38 }}>Continue onboarding</Link>
-    </>
-  ) : (
-    <>
-      {session ? (
-        <button className="btn outline" style={{ marginTop: 38 }} onClick={clockOut}>Clock out · {elapsed(session.start, now)}</button>
-      ) : (
-        <button className="btn" style={{ marginTop: 38 }} onClick={clockIn}>Clock in</button>
-      )}
-      {me.tier === "Core" && <div style={{ marginTop: 16 }}><LogHoursLink /></div>}
-    </>
-  );
-
-  const orb = <div className="orb"><Img name={onboarding ? "hands" : session ? "stopwatch" : "hourglass"} /></div>;
-
-  if (desk)
-    return (
-      <section className="glance-d">
-        <div className="gd-main">
-          {intro}
-          {lists}
-          <div>{actions}</div>
-        </div>
-        <div className="gd-side">{orb}</div>
-      </section>
-    );
-
-  return (
-    <section className="glance">
-      {intro}
-      {orb}
-      {lists}
-      {actions}
-    </section>
-  );
 }
 
 /** True while a member still has onboarding steps left. */
@@ -249,52 +166,6 @@ export function LogHours({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Co–Star's "What it looks like in space", as your week against the tiers. */
-export function WeekInSpace({ s }: { s: Standing }) {
-  const diff = s.thisWeek - s.target;
-  return (
-    <section className="sect">
-      <div className="label m" style={{ marginBottom: 14 }}>What it looks like this week</div>
-      <div className="space" style={{ height: 250 }}>
-        <div style={{ position: "absolute", left: "50%", top: 44, bottom: 60, borderLeft: "1px solid #aaa" }} />
-        {s.nextRule && <Body top={44} label={[`Your ${s.nextRule.id}`, `pace`, `${s.nextRule.weeklyHours} h`]} size={46} side="left" />}
-        <Body top={122} label={[`${s.member.tier} now`, `${s.target} h`]} size={30} side="right" />
-        <span className="mono" style={{ position: "absolute", left: "calc(50% + 10px)", top: 160, fontSize: 10, color: "#bbb" }}>{diff >= 0 ? `+${hoursLabel(diff)}` : `−${hoursLabel(-diff)}`}</span>
-        <div style={{ position: "absolute", left: "50%", bottom: -170, width: 300, height: 260, marginLeft: -150, borderRadius: "50%", background: "radial-gradient(circle at 42% 18%, #e2e2e2, #8a8a8a 35%, #3a3a3a 70%)" }} />
-        <span className="tag" style={{ position: "absolute", left: "50%", bottom: 22, transform: "translateX(18px)", background: "transparent" }}>You · {hoursLabel(s.thisWeek)}</span>
-      </div>
-      <div style={{ marginTop: 18 }}>
-        <div className="transit">
-          <span className="ic"><span className="planet" style={{ width: 30, height: 30 }} /></span>
-          <div><div className="h-s">Your hours</div><span className="tag">{hoursLabel(s.thisWeek)} this week</span></div>
-        </div>
-        <div className="transit">
-          <span className="ic"><span className="vline" /></span>
-          <div><div className="h-s">{diff >= 0 ? "have passed" : "are approaching"}</div><span className="tag out">{diff >= 0 ? `+${hoursLabel(diff)} over` : `${hoursLabel(-diff)} to go`}</span></div>
-        </div>
-        <div className="transit">
-          <span className="ic"><span className="planet w" style={{ width: 30, height: 30 }} /></span>
-          <div><div className="h-s">your {s.member.tier} commitment.</div><span className="tag">{s.target} h a week</span></div>
-        </div>
-      </div>
-      <p className="h-s" style={{ marginTop: 22 }}>
-        {s.streak > 0 ? `This is week ${s.streak} of your streak. Pause weeks never break it.` : "A new streak starts the moment you hit your hours."}
-      </p>
-    </section>
-  );
-}
-
-function Body({ top, label, size, side }: { top: number; label: string[]; size: number; side: "left" | "right" }) {
-  return (
-    <div style={{ position: "absolute", top, left: "50%", transform: "translate(-50%, -50%)" }}>
-      <div className="planet" style={{ width: size, height: size }} />
-      <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: side === "left" ? "flex-end" : "flex-start", gap: 2, [side === "left" ? "right" : "left"]: size + 12 }}>
-        {label.map((l) => <span key={l} className="tag" style={{ whiteSpace: "nowrap", background: "rgba(10,10,10,0.7)", border: "1px solid #555" }}>{l}</span>)}
-      </span>
-    </div>
-  );
-}
-
 export function NextMeeting() {
   const { db, me, now, liveMeetingId, meetingClockIn, announceAbsence } = useApp();
   const live = liveMeetingId ? db.meetings.find((m) => m.id === liveMeetingId && m.memberIds.includes(me.id)) : undefined;
@@ -339,41 +210,6 @@ export function NextMeeting() {
   );
 }
 
-export function TeamFeed() {
-  const { db, me, standingOf } = useApp();
-  const people = db.members.filter((m) => m.id !== me.id && (m.id === me.buddyId || m.series.some((s) => s !== "Community" && me.series.includes(s)))).slice(0, 3);
-  const lines = (s: Standing) => {
-    const n = first(s.member);
-    if (s.streak >= 5) return [`${n} has kept ${s.member.tier} for ${s.streak} weeks running.`, "Ask how. It's rarely willpower."];
-    if (s.toKeep === 0) return [`${n}'s week is already made.`, `${hoursLabel(s.thisWeek)} logged. The rest is extra.`];
-    if (s.thisWeek === 0) return [`${n} hasn't clocked in this week.`, "A message costs nothing. Ask if they need a hand."];
-    return [`${n} is ${hoursLabel(s.toKeep)} from their week.`, "Maybe you're at the Hub at the same time."];
-  };
-  return (
-    <section>
-      <div className="label m pad" style={{ paddingTop: 26 }}>Your people this week</div>
-      {people.map((p) => {
-        const s = standingOf(p.id);
-        const [a, b] = lines(s);
-        return (
-          <div key={p.id} className="sect">
-            <div className="row">
-              <Avatar m={p} size="m" />
-              <div className="grow">
-                <div className="small"><span style={{ color: "var(--ink)" }}>{p.name}</span> <span className="muted">{handle(p)}</span></div>
-                <Signs s={s} small />
-              </div>
-            </div>
-            <div className="h-m" style={{ marginTop: 14 }}>{a}</div>
-            <p className="small" style={{ marginTop: 6 }}>{b}</p>
-            <Link href={`/team/${p.id}`} className="arrow" style={{ marginTop: 12 }}>View {handle(p)}&apos;s chart →</Link>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
 export function AdminToday() {
   const { db, standingOf, me } = useApp();
   if (!me.admin) return null;
@@ -398,24 +234,3 @@ export function AdminToday() {
   );
 }
 
-export function EmojiLines({ s }: { s: Standing }) {
-  const { db, today } = useApp();
-  return (
-    <ul className="lines">
-      {emojiLines(db, s, today).map((l) => (
-        <li key={l.e}>
-          <span className="e">{l.e}</span>
-          <span>
-            {l.pre}{" "}
-            {l.keys.map((k, i) => (
-              <span key={k.label}>
-                <Link href={k.href} className="k">{k.label}</Link>
-                {i < l.keys.length - 2 ? ", " : i === l.keys.length - 2 ? " and " : ""}
-              </span>
-            ))}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}

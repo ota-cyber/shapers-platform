@@ -1,38 +1,51 @@
 "use client";
 
+import Link from "next/link";
 import { useApp } from "@/lib/store";
-import { AdminToday, BuddyCard, Glance, NextMeeting, TeamFeed, TopPerformers, WeekInSpace, useOnboarding } from "@/components/blocks";
-import { TheEnd } from "@/components/ui";
+import { fmt, greeting } from "@/lib/dates";
+import { AdminToday, BuddyCard, TopPerformers, useOnboarding } from "@/components/blocks";
+import { HoursCard, MeetingsCard, OrgCards, TasksCard } from "@/components/home";
+import { WeekStrip } from "@/components/profile";
+import { handle } from "@/components/ui";
 
 export default function Home() {
-  const { my, me } = useApp();
+  const { me, now } = useApp();
   const onboarding = useOnboarding();
   return (
-    <>
-      {/* mobile: one column, Co–Star's home order */}
-      <div className="page hide-d">
-        <Glance />
-        <div className="rule" />
-        {onboarding && <BuddyCard />}
-        {me.admin && <TopPerformers />}
-        <AdminToday />
-        <WeekInSpace s={my} />
-        <NextMeeting />
-        <TeamFeed />
-        <TheEnd line={me.tier === "Core" ? "See how the institute is doing" : `See your path to ${my.nextRule?.id ?? "Core"}`} href={me.tier === "Core" && me.admin ? "/team?view=overview" : "/you?tab=chart"} />
+    <div className="page home">
+      <h1 className="greet">
+        {greeting(now)}, <Link href="/you">{handle(me)}</Link>. It&apos;s {fmt.weekday(now)}, {fmt.monthDay(now)}. Your week at a glance:
+      </h1>
+
+      <div className="home-week"><WeekStrip memberId={me.id} /></div>
+
+      {onboarding && (
+        <div className="home-row onboard">
+          <div className="card">
+            <div className="card-h"><span className="label">Your first weeks</span></div>
+            <p className="h-m">Finish onboarding and this page fills with your hours, meetings and tasks.</p>
+            <div className="card-actions"><Link href="/onboarding" className="btn">Continue onboarding</Link></div>
+          </div>
+          <div className="card"><BuddyCard /></div>
+        </div>
+      )}
+
+      <div className="cards">
+        <HoursCard />
+        <MeetingsCard />
+        <TasksCard />
       </div>
 
-      {/* desktop: the glance is the page; admins and new members get one more row */}
-      <div className="page hide-m">
-        <Glance desk />
-        {onboarding && <div className="home-row"><div className="panel"><BuddyCard /></div></div>}
-        {me.admin && (
-          <div className="home-row desk-grid two-even">
-            <div className="panel"><TopPerformers /></div>
-            <div className="panel"><AdminToday /></div>
+      {me.admin && (
+        <>
+          <h2 className="sect-title">The institute</h2>
+          <OrgCards />
+          <div className="home-row two">
+            <div className="card flush"><TopPerformers /></div>
+            <div className="card flush"><AdminToday /></div>
           </div>
-        )}
-      </div>
-    </>
+        </>
+      )}
+    </div>
   );
 }

@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
-import { fmt, hoursLabel, isoDate } from "@/lib/dates";
+import { fmt, hoursLabel } from "@/lib/dates";
 import { TIERS, type Standing } from "@/lib/tiers";
 import type { Member, Series } from "@/lib/types";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { Avatar, Img, Meter, Sheet, Signs, first, handle } from "@/components/ui";
 
-type View = "everyone" | "up" | "dropping" | "new" | "approvals" | "meetings" | "overview";
+type View = "everyone" | "up" | "dropping" | "new" | "approvals" | "overview";
 
 export default function TeamPage() {
   return (
@@ -34,12 +34,10 @@ function Team() {
         { id: "dropping", label: "Dropping" },
         { id: "new", label: "New" },
         { id: "approvals", label: "Approvals" },
-        { id: "meetings", label: "Meetings" },
       ]
     : [
         { id: "everyone", label: "Everyone" },
         { id: "new", label: "New" },
-        { id: "meetings", label: "Meetings" },
       ];
 
   const chips = (
@@ -53,7 +51,6 @@ function Team() {
   const content =
     view === "overview" ? <Overview /> :
     view === "approvals" ? <Approvals /> :
-    view === "meetings" ? <Meetings /> :
     <People view={view} />;
 
   return (
@@ -69,7 +66,7 @@ function Team() {
           </div>
           <div className="panel">
             {chips}
-            {view === "everyone" ? (me.admin ? <Overview /> : <Meetings />) : content}
+            {view === "everyone" ? <Overview /> : content}
           </div>
         </div>
       </div>
@@ -279,39 +276,6 @@ function Approvals() {
         ))}
         {!pauses.length && <div><span className="k muted">Nothing pending</span></div>}
       </div>
-    </>
-  );
-}
-
-function Meetings() {
-  const { db, me, now, today } = useApp();
-  const mine = me.admin ? db.meetings : db.meetings.filter((m) => m.memberIds.includes(me.id));
-  const past = mine.filter((m) => isoDate(new Date(m.start)) <= today).sort((a, b) => b.start.localeCompare(a.start)).slice(0, 10);
-  const next = mine.filter((m) => new Date(m.start) > now).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 6);
-  const recorded = (id: string) => {
-    const m = db.meetings.find((x) => x.id === id)!;
-    const d = isoDate(new Date(m.start));
-    return db.attendance.filter((a) => a.series === m.series && a.date === d).length;
-  };
-  const Row = ({ id }: { id: string }) => {
-    const m = db.meetings.find((x) => x.id === id)!;
-    return (
-      <Link href={`/meetings/${m.id}`}>
-        <span className="planet" />
-        <span className="k">{m.series}<br /><span className="muted">{fmt.dow(m.start)} {fmt.short(m.start)} · {fmt.time(m.start)}</span></span>
-        <span className="v">{recorded(m.id) ? `${recorded(m.id)}/${m.memberIds.length}` : me.admin && isoDate(new Date(m.start)) <= today ? "Record" : ""}</span>
-        <span className="go">→</span>
-      </Link>
-    );
-  };
-  return (
-    <>
-      <div className="sect center"><div className="h-l">Meetings, read from the calendar.</div><p className="small muted" style={{ marginTop: 6 }}>Six series. The calendar stays the source; we only read it.</p></div>
-      <div className="group-h">Coming up</div>
-      <div className="rows">{next.map((m) => <Row key={m.id} id={m.id} />)}</div>
-      <div className="group-h">Recent</div>
-      <div className="rows">{past.map((m) => <Row key={m.id} id={m.id} />)}</div>
-      <div style={{ height: 30 }} />
     </>
   );
 }

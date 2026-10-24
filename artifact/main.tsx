@@ -8,6 +8,8 @@ import MemberPage from "@/app/team/[id]/page";
 import TasksPage from "@/app/tasks/page";
 import Onboarding from "@/app/onboarding/page";
 import MeetingPage from "@/app/meetings/[id]/page";
+import MeetingsPage from "@/app/meetings/page";
+import HoursPage from "@/app/hours/page";
 import { usePathname } from "./router";
 import "@/app/globals.css";
 
@@ -19,6 +21,8 @@ function Routes() {
     p === "/team" ? TeamPage :
     p.startsWith("/team/") ? MemberPage :
     p === "/tasks" ? TasksPage :
+    p === "/hours" ? HoursPage :
+    p === "/meetings" ? MeetingsPage :
     p === "/onboarding" ? Onboarding :
     p.startsWith("/meetings/") ? MeetingPage :
     Home;

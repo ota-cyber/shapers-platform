@@ -81,7 +81,8 @@ export interface Project {
   description: string;
 }
 
-export type TaskStatus = "todo" | "doing" | "done";
+/** Columns of the team's Miro board: Idea lane, Priority lane, In progress, Validation, Done. */
+export type TaskStatus = "idea" | "todo" | "doing" | "review" | "done";
 export type Priority = "low" | "normal" | "high";
 
 export interface TaskEvent {
@@ -98,7 +99,8 @@ export interface Task {
   assigneeId: string | null;
   status: TaskStatus;
   priority: Priority;
-  due: string | null;
+  start: string | null; // timeline bar start
+  due: string | null; // timeline bar end
   doneAt: string | null;
   history: TaskEvent[];
 }
