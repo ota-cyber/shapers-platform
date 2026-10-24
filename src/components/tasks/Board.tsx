@@ -45,6 +45,11 @@ interface Props {
 export function Board({ tasks, lanes, mode, onOpen, defaultProject }: Props) {
   const { moveTask, me } = useApp();
   const [active, setActive] = useState<Task | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const say = (msg: string) => {
+    setNotice(msg);
+    window.setTimeout(() => setNotice((n) => (n === msg ? null : n)), 3500);
+  };
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
@@ -64,9 +69,12 @@ export function Board({ tasks, lanes, mode, onOpen, defaultProject }: Props) {
     const [lane, status] = String(e.over.id).split("|") as [string, TaskStatus];
     const to: Parameters<typeof moveTask>[1] = { status };
     // Members can only change status; dropping into another lane keeps owner and project.
+    const otherLane = mode !== "none" && lane !== laneOf(t);
     if (mode === "project" && rights.move) to.projectId = lane;
     if (mode === "person" && rights.reassign) to.assigneeId = lane === "_none" ? null : lane;
     moveTask(t.id, to);
+    if (otherLane && !(mode === "project" ? rights.move : rights.reassign))
+      say(`Moved to ${STATUS_LABEL[status]}. Only Core members and admins can move a task to another ${mode === "project" ? "project" : "person"}.`);
   };
 
   return (
@@ -100,6 +108,7 @@ export function Board({ tasks, lanes, mode, onOpen, defaultProject }: Props) {
         </div>
       </div>
       <DragOverlay dropAnimation={null}>{active ? <Sticky t={active} lifted /> : null}</DragOverlay>
+      {notice && <div className="kb-notice" role="status">{notice}</div>}
     </DndContext>
   );
 }
@@ -187,7 +196,7 @@ function DraggableSticky({ t, onOpen, hidden }: { t: Task; onOpen: (id: string) 
   const locked = !taskRights(me, t).edit;
   const { attributes, listeners, setNodeRef } = useDraggable({ id: t.id, disabled: locked });
   return (
-    <div ref={setNodeRef} {...listeners} {...attributes} style={{ opacity: hidden ? 0.25 : 1 }} onClick={() => onOpen(t.id)}>
+    <div ref={setNodeRef} {...listeners} {...attributes} style={{ opacity: hidden ? 0.25 : 1 }} onClick={() => onOpen(t.id)} title={locked ? (t.assigneeId ? "Only the person it's assigned to, Core members and admins can move this task" : "Not assigned yet: a Core member or admin assigns it first") : undefined}>
       <Sticky t={t} locked={locked} />
     </div>
   );
@@ -200,7 +209,7 @@ export function Sticky({ t, lifted, locked }: { t: Task; lifted?: boolean; locke
   const late = t.status !== "done" && t.due && t.due < today;
   return (
     <div className={`sticky ${lifted ? "lifted" : ""} ${locked ? "locked" : ""} ${t.status === "done" ? "is-done" : ""}`} style={{ background: projectColor(ids, t.projectId) }}>
-      <div className="st-title">{t.title}</div>
+      <div className="st-title">{locked && <span className="st-lock" aria-label="Locked">⌀ </span>}{t.title}</div>
       <div className="st-meta">
         <span className={late ? "late" : ""}>{t.due ? (late ? "Late " : "") + fmt.short(t.due) : ""}{t.priority === "high" && t.status !== "done" ? " ●" : ""}</span>
         <span className="st-size" title="Size, set by Core or admin">{t.size ?? "M"}</span>
