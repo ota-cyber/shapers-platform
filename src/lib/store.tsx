@@ -5,7 +5,7 @@
 // demo survives a reload.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AttendanceState, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
+import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
@@ -38,7 +38,7 @@ interface Ctx {
   logHours: (date: string, hours: number, note?: string) => "logged" | "requested";
   resolveBackfill: (id: string, approve: boolean) => void;
   updateTask: (id: string, patch: Partial<Task>, what: string) => void;
-  addTask: (t: { projectId: string; title: string; assigneeId: string | null; due: string | null; priority: Priority; status?: TaskStatus; start?: string | null }) => void;
+  addTask: (t: { projectId: string; title: string; assigneeId: string | null; due: string | null; priority: Priority; status?: TaskStatus; start?: string | null; size?: TaskSize }) => void;
   moveTask: (id: string, to: { status?: TaskStatus; projectId?: string; assigneeId?: string | null }) => void;
   setTaskDates: (id: string, start: string, due: string) => void;
   addProject: (p: Omit<Project, "id">) => void;
@@ -224,7 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTask: (t) =>
         mutate((db) =>
           db.tasks.push({
-            id: uid(), notes: "", doneAt: null, ...t, status: t.status ?? "todo", start: t.start ?? (t.due ? addDays(t.due, -5) : null),
+            id: uid(), notes: "", doneAt: null, ...t, size: t.size ?? "M", status: t.status ?? "todo", start: t.start ?? (t.due ? addDays(t.due, -5) : null),
             history: [{ at: now.toISOString(), by: me.id, what: "created" }],
           }),
         ),
@@ -270,7 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (state === "unexcused" && m.series === "Community" && who.tier === "GO!" && !db.tasks.some((t) => t.title === title && t.assigneeId === memberId)) {
             db.tasks.push({
               id: uid(), projectId: "community-night", title, notes: "Missed Community meeting: read the minutes and pick up one general task within 14 days.",
-              assigneeId: memberId, status: "todo", priority: "normal", start: date, due: addDays(date, 14), doneAt: null,
+              assigneeId: memberId, status: "todo", priority: "normal", size: "S", start: date, due: addDays(date, 14), doneAt: null,
               history: [{ at: now.toISOString(), by: "rules", what: "created by the GO! absence rule" }],
             });
           }

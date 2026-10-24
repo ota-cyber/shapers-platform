@@ -203,6 +203,7 @@ export function Sticky({ t, lifted, locked }: { t: Task; lifted?: boolean; locke
       <div className="st-title">{t.title}</div>
       <div className="st-meta">
         <span className={late ? "late" : ""}>{t.due ? (late ? "Late " : "") + fmt.short(t.due) : ""}{t.priority === "high" && t.status !== "done" ? " ●" : ""}</span>
+        <span className="st-size" title="Size, set by Core or admin">{t.size ?? "M"}</span>
         <span className="st-who" title={who?.name ?? "Unassigned"}>{who ? initials(who.name) : "?"}</span>
       </div>
     </div>

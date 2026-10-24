@@ -131,6 +131,7 @@ export function seedDb(): Db {
     assigneeId,
     status,
     priority,
+    size: priority === "high" ? "L" : priority === "low" ? "S" : i % 3 === 0 ? "L" : "M",
     start: due ? addDays(due, -(4 + (i % 4) * 3)) : null,
     due,
     doneAt,

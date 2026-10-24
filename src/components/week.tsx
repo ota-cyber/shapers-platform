@@ -5,6 +5,7 @@
 // meeting that is going on right now.
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   DndContext,
@@ -138,8 +139,12 @@ function TaskCard({ t }: { t: Task }) {
 }
 
 /** One week: meetings at their times, your tasks as bars across days. */
-function WeekTimeline() {
+/** A member's week. Your own is interactive; someone else's is read-only (Team member page). */
+export function WeekTimeline({ memberId }: { memberId?: string }) {
   const { db, me, today, now, liveMeetingId } = useApp();
+  const router = useRouter();
+  const who = memberId ?? me.id;
+  const readonly = who !== me.id;
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const from = addDays(weekStart(today), offset * 7);
@@ -148,10 +153,10 @@ function WeekTimeline() {
   const ids = db.projects.map((p) => p.id);
 
   const meetings = db.meetings
-    .filter((m) => m.memberIds.includes(me.id) && isoDate(new Date(m.start)) >= from && isoDate(new Date(m.start)) <= to)
+    .filter((m) => m.memberIds.includes(who) && isoDate(new Date(m.start)) >= from && isoDate(new Date(m.start)) <= to)
     .sort((a, b) => a.start.localeCompare(b.start));
   const tasks = db.tasks
-    .filter((t) => t.assigneeId === me.id && t.start && t.due && t.start <= to && t.due >= from)
+    .filter((t) => t.assigneeId === who && t.start && t.due && t.start <= to && t.due >= from)
     .sort((a, b) => a.start!.localeCompare(b.start!));
 
   return (
@@ -175,11 +180,11 @@ function WeekTimeline() {
           {days.map((d) => (
             <div key={d} className={`wk-cell ${d === today ? "today" : ""}`}>
               {meetings.filter((m) => isoDate(new Date(m.start)) === d).map((m) => {
-                const live = liveMeetingId === m.id;
-                const state = attendanceOf(db, m.id, me.id);
+                const live = !readonly && liveMeetingId === m.id;
+                const state = attendanceOf(db, m.id, who);
                 const past = new Date(m.end) < now;
                 return (
-                  <button key={m.id} className={`wk-meet ${live ? "live" : ""} ${past ? "past" : ""}`} onClick={() => setOpen(m.id)}>
+                  <button key={m.id} className={`wk-meet ${live ? "live" : ""} ${past ? "past" : ""}`} onClick={() => (readonly ? router.push(`/meetings/${m.id}`) : setOpen(m.id))}>
                     <span className="t">{fmt.time(m.start)}</span>
                     <span className="n">{m.series}</span>
                     <span className="s">{live ? (state === "present" || state === "remote" ? "You're in" : "Clock in now") : state ? state : past ? "" : ""}</span>
@@ -191,7 +196,7 @@ function WeekTimeline() {
 
           <div className="wk-lab">Tasks</div>
           <div className="wk-tasks" style={{ gridColumn: "2 / span 7", minHeight: Math.max(96, tasks.length * 34 + 16) }}>
-            {days.map((d, i) => <DayDrop key={d} day={d} index={i} today={d === today} />)}
+            {days.map((d, i) => readonly ? <div key={d} className={`wk-drop ${d === today ? "today" : ""}`} style={{ left: `${(i / 7) * 100}%` }} /> : <DayDrop key={d} day={d} index={i} today={d === today} />)}
             {tasks.map((t, row) => {
               const s = t.start! < from ? from : t.start!;
               const e = t.due! > to ? to : t.due!;
@@ -208,7 +213,7 @@ function WeekTimeline() {
                 </Link>
               );
             })}
-            {!tasks.length && <span className="wk-empty">No tasks planned this week. Drag one from Do.</span>}
+            {!tasks.length && <span className="wk-empty">{readonly ? "No tasks planned this week." : "No tasks planned this week. Drag one from Do."}</span>}
           </div>
         </div>
       </div>

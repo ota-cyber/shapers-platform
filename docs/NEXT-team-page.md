@@ -1,6 +1,6 @@
 # Next: Team page for admins and Core
 
-Planned 2026-10-24, to build once the onboarding work is merged.
+Planned 2026-10-24. **Built 2026-10-25** on branch `UI` (`src/app/team/`, `src/lib/score.ts`).
 
 ## Who sees it
 

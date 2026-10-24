@@ -1,9 +1,8 @@
 // Co–Star-style copy, written from live data. Short, direct, a little dry.
 // Encourage, don't police: the hard numbers live in the admin view.
 
-import type { Db, Meeting, Member, Task } from "./types";
+import type { Db, Meeting, Task } from "./types";
 import type { Standing } from "./tiers";
-import { hoursLabel } from "./dates";
 
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => WORDS[n] ?? String(n);
@@ -38,15 +37,4 @@ export function myOpenTasks(db: Db, memberId: string): Task[] {
   return db.tasks
     .filter((t) => t.assigneeId === memberId && t.status !== "done")
     .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
-}
-
-export function memberSummary(s: Standing, viewer: Member): string {
-  const name = s.member.name.split(" ")[0];
-  const you = viewer.id === s.member.id;
-  const who = you ? "You" : name;
-  const h = `${who} logged ${hoursLabel(s.thisWeek)} of ${s.target} this week`;
-  const streak = s.streak > 0 ? `, on a ${s.streak}-week streak` : ", with no streak running";
-  const trend = s.trend === "up" ? " The last two weeks are trending up." : s.trend === "down" ? " The last two weeks dipped." : "";
-  const flag = s.flag === "dropping" ? ` ${you ? "You've" : name + " has"} been under target lately. A good moment to ask how it's going.` : s.flag === "moving-up" ? ` ${you ? "You're" : name + " is"} showing the pattern of the next tier.` : "";
-  return `${h}${streak}.${trend}${flag}`;
 }

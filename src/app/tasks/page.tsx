@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp, STATUS_LABEL } from "@/lib/store";
 import { addDays, fmt } from "@/lib/dates";
 import { initials, projectColor } from "@/lib/colors";
-import type { Priority, TaskStatus } from "@/lib/types";
+import type { Priority, TaskSize, TaskStatus } from "@/lib/types";
 import { Board, COLUMNS, type Lane, type LaneMode } from "@/components/tasks/Board";
 import { Timeline } from "@/components/tasks/Timeline";
 import { Sheet } from "@/components/ui";
-import { canAssignOthers, taskRights } from "@/lib/permissions";
+import { canAssignOthers, canManageTasks, taskRights } from "@/lib/permissions";
+import { SIZE_LABEL, TASK_POINTS } from "@/lib/score";
 
 const PRI: Record<Priority, string> = { high: "High", normal: "Normal", low: "Low" };
 
@@ -114,6 +115,11 @@ function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) {
             <button key={s} className={`btn-s ${t.priority === s ? "on" : ""}`} disabled={!canEdit} onClick={() => updateTask(t.id, { priority: s }, `priority ${s}`)}>{PRI[s]}</button>
           ))}
         </div>
+        <div><span className="k">Size</span>
+          {(["S", "M", "L"] as TaskSize[]).map((z) => (
+            <button key={z} className={`btn-s ${(t.size ?? "M") === z ? "on" : ""}`} disabled={!canManageTasks(me)} title={`${TASK_POINTS[z]} pt`} onClick={() => updateTask(t.id, { size: z }, `size ${SIZE_LABEL[z].toLowerCase()}`)}>{SIZE_LABEL[z]}</button>
+          ))}
+        </div>
         <div><span className="k">Dates</span>
           <input type="date" value={t.start ?? ""} disabled={!canEdit} style={field} onChange={(e) => e.target.value && setTaskDates(t.id, e.target.value, t.due && t.due >= e.target.value ? t.due : e.target.value)} aria-label="Start" />
           <span className="muted">→</span>
@@ -157,6 +163,7 @@ function NewTask({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [due, setDue] = useState(addDays(today, 7));
   const [priority, setPriority] = useState<Priority>("normal");
+  const [size, setSize] = useState<TaskSize>("M");
   return (
     <Sheet title="New task" onClose={onClose}>
       <div className="pad stack" style={{ paddingTop: 22 }}>
@@ -178,10 +185,12 @@ function NewTask({ onClose }: { onClose: () => void }) {
           </div>
           <div className="field grow"><label htmlFor="nt-due">Due</label><input id="nt-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div>
         </div>
-        <div className="row" style={{ justifyContent: "center" }}>
+        <div className="row" style={{ justifyContent: "center", flexWrap: "wrap" }}>
           {(["low", "normal", "high"] as Priority[]).map((p) => <button key={p} className={`btn-s ${priority === p ? "on" : ""}`} onClick={() => setPriority(p)}>{PRI[p]}</button>)}
+          {canManageTasks(me) && <span className="muted">·</span>}
+          {canManageTasks(me) && (["S", "M", "L"] as TaskSize[]).map((z) => <button key={z} className={`btn-s ${size === z ? "on" : ""}`} onClick={() => setSize(z)}>{SIZE_LABEL[z]}</button>)}
         </div>
-        <button className="btn block" disabled={!title} onClick={() => { addTask({ title, projectId, assigneeId: canAssignOthers(me) ? assigneeId || null : me.id, due: due || null, priority, status, start: today }); onClose(); }}>Add task</button>
+        <button className="btn block" disabled={!title} onClick={() => { addTask({ title, projectId, assigneeId: canAssignOthers(me) ? assigneeId || null : me.id, due: due || null, priority, status, start: today, size: canManageTasks(me) ? size : "M" }); onClose(); }}>Add task</button>
       </div>
     </Sheet>
   );

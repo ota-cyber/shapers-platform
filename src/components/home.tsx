@@ -9,14 +9,17 @@ import { myOpenTasks, nextMeeting } from "@/lib/copy";
 import { projectColor } from "@/lib/colors";
 import { Meter } from "./ui";
 
-export function MeetingsCard() {
-  const { me, my, db, now, today, liveMeetingId, meetingClockIn } = useApp();
+export function MeetingsCard({ memberId }: { memberId?: string }) {
+  const { me: viewer, my: mine, db, now, today, liveMeetingId, meetingClockIn, member, standingOf } = useApp();
+  const me = memberId ? member(memberId)! : viewer;
+  const my = memberId ? standingOf(memberId) : mine;
+  const own = me.id === viewer.id;
   const weekEnd = addDays(weekStart(today), 6);
   const week = db.meetings
     .filter((m) => m.memberIds.includes(me.id) && new Date(m.end) > now && isoDate(new Date(m.start)) <= weekEnd)
     .sort((a, b) => a.start.localeCompare(b.start));
   const next = week[0] ?? nextMeeting(db, me.id, now);
-  const live = liveMeetingId ? db.meetings.find((m) => m.id === liveMeetingId && m.memberIds.includes(me.id)) : undefined;
+  const live = own && liveMeetingId ? db.meetings.find((m) => m.id === liveMeetingId && m.memberIds.includes(me.id)) : undefined;
   const liveState = live ? attendanceOf(db, live.id, me.id) : null;
   const day = (iso: string) => `${fmt.dow(iso).slice(0, 3)} ${fmt.time(iso)}`;
   return (

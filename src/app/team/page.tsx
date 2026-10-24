@@ -9,9 +9,10 @@ import { TIERS, type Standing } from "@/lib/tiers";
 import type { Member, Series, TierId } from "@/lib/types";
 import { ONBOARDING_STEPS, SETUP_STEPS } from "@/lib/seed";
 import { RecordMeetings } from "@/components/home";
+import { POINTS_PER_WEEK_MET, SCORE_WEEKS, TASK_POINTS, score } from "@/lib/score";
 import { Avatar, Img, Meter, Sheet, Signs, first, handle } from "@/components/ui";
 
-type View = "everyone" | "up" | "dropping" | "new" | "approvals" | "meetings" | "overview";
+type View = "everyone" | "leaderboard" | "up" | "dropping" | "new" | "approvals" | "meetings" | "overview";
 
 export default function TeamPage() {
   return (
@@ -27,9 +28,11 @@ function Team() {
   const router = useRouter();
   const view = (params.get("view") as View) || "everyone";
   const setView = (v: View) => router.replace(`/team?view=${v}`, { scroll: false });
+  // Core and admins both get Team; approvals and attendance recording stay admin-only.
   const views: { id: View; label: string }[] = me.admin
     ? [
         { id: "everyone", label: "Everyone" },
+        { id: "leaderboard", label: "Leaderboard" },
         { id: "overview", label: "Overview" },
         { id: "up", label: "Moving up" },
         { id: "dropping", label: "Dropping" },
@@ -37,10 +40,19 @@ function Team() {
         { id: "approvals", label: "Approvals" },
         { id: "meetings", label: "Meetings" },
       ]
-    : [
-        { id: "everyone", label: "Everyone" },
-        { id: "new", label: "New" },
-      ];
+    : me.tier === "Core"
+      ? [
+          { id: "everyone", label: "Everyone" },
+          { id: "leaderboard", label: "Leaderboard" },
+          { id: "overview", label: "Overview" },
+          { id: "up", label: "Moving up" },
+          { id: "dropping", label: "Dropping" },
+          { id: "new", label: "New" },
+        ]
+      : [
+          { id: "everyone", label: "Everyone" },
+          { id: "new", label: "New" },
+        ];
 
   const chips = (
     <div className="chips">
@@ -51,6 +63,7 @@ function Team() {
   );
 
   const content =
+    view === "leaderboard" ? <Leaderboard /> :
     view === "overview" ? <Overview /> :
     view === "approvals" ? <Approvals /> :
     view === "meetings" ? <RecordMeetings /> :
@@ -64,12 +77,12 @@ function Team() {
       </div>
       <div className="page hide-m">
         <div className="desk-grid two">
-          <div className="panel sticky" style={{ maxHeight: "calc(100vh - 130px)", overflow: "auto" }}>
+          <div className="panel pinned" style={{ maxHeight: "calc(100vh - 130px)", overflow: "auto" }}>
             <People view="everyone" compact />
           </div>
           <div className="panel">
             {chips}
-            {view === "everyone" ? <>{me.admin && <QuickAdd />}<Overview /></> : content}
+            {view === "everyone" ? <>{me.admin && <QuickAdd />}<Leaderboard /></> : content}
           </div>
         </div>
       </div>
@@ -467,6 +480,48 @@ function Overview() {
           ))}
         </div>
       </section>
+    </>
+  );
+}
+
+/** Performance: finished task points (S/M/L = 1/3/8) + 5 per week at commitment, last six weeks. */
+function Leaderboard() {
+  const { db, standingOf, today } = useApp();
+  const rows = db.members
+    .filter((m) => m.onboarding === null)
+    .map((m) => {
+      const s = standingOf(m.id);
+      return { s, sc: score(db, s, today) };
+    })
+    .sort((a, b) => b.sc.total - a.sc.total || b.sc.taskPoints - a.sc.taskPoints);
+  const top = Math.max(1, ...rows.map((r) => r.sc.total));
+  return (
+    <>
+      <div className="sect">
+        <div className="h-l">Leaderboard</div>
+        <p className="small muted" style={{ marginTop: 6 }}>
+          Last {SCORE_WEEKS} weeks. Finished tasks earn {TASK_POINTS.S} / {TASK_POINTS.M} / {TASK_POINTS.L} points for small / medium / large; every week at a member&apos;s own commitment earns {POINTS_PER_WEEK_MET}. Hours are judged against each tier, so GO! and Core compete fairly.
+        </p>
+      </div>
+      <div className="lb">
+        <div className="lb-row lb-h"><span>#</span><span>Member</span><span>Tasks</span><span>Hours</span><span>Total</span></div>
+        {rows.map(({ s, sc }, i) => (
+          <Link key={s.member.id} href={`/team/${s.member.id}`} className="lb-row">
+            <span className="serif lb-rank">{i + 1}</span>
+            <span className="lb-who">
+              <Avatar m={s.member} size="s" />
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span className="nm">{s.member.name}</span>
+                <span className="lb-bar"><i style={{ width: `${(sc.taskPoints / top) * 100}%` }} /><b style={{ width: `${(sc.hoursPoints / top) * 100}%` }} /></span>
+              </span>
+            </span>
+            <span className="mono-lc">{sc.taskPoints}<span className="muted"> · {sc.tasksDone}</span></span>
+            <span className="mono-lc">{sc.hoursPoints}<span className="muted"> · {sc.weeksMet}/{sc.weeksCounted} wk</span></span>
+            <span className="serif lb-total">{sc.total}</span>
+          </Link>
+        ))}
+      </div>
+      <p className="small muted pad" style={{ padding: "12px var(--gutter) 30px" }}>Bar: black is task points, grey is hours points. Task size is set by Core or admin, so members can&apos;t inflate their own score.</p>
     </>
   );
 }

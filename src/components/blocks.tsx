@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useApp } from "@/lib/store";
+import { score } from "@/lib/score";
 import { addDays, fmt, hoursLabel } from "@/lib/dates";
 import { headline } from "@/lib/copy";
 import { ONBOARDING_STEPS, SETUP_STEPS } from "@/lib/seed";
@@ -149,18 +150,19 @@ function CopyButton({ text }: { text: string }) {
 
 /** Admins: the members doing best lately, by streak, then hours against their commitment. */
 export function TopPerformers() {
-  const { db, standingOf } = useApp();
+  const { db, standingOf, today } = useApp();
   const ranked = db.members
     .filter((m) => m.onboarding === null)
     .map((m) => standingOf(m.id))
-    .sort((a, b) => b.streak - a.streak || b.avg4 / b.target - a.avg4 / a.target)
+    .map((s) => ({ s, sc: score(db, s, today) }))
+    .sort((a, b) => b.sc.total - a.sc.total || b.sc.taskPoints - a.sc.taskPoints)
     .slice(0, 5);
   return (
     <section className="sect">
       <div className="label m">Leading the way</div>
       <div className="h-l" style={{ marginTop: 10 }}>Who&apos;s carrying the institute right now.</div>
       <div style={{ marginTop: 10 }}>
-        {ranked.map((s, i) => (
+        {ranked.map(({ s, sc }, i) => (
           <Link key={s.member.id} href={`/team/${s.member.id}`} className="person" style={{ padding: "12px 0" }}>
             <span className="serif" style={{ fontSize: 26, width: 22 }}>{i + 1}</span>
             <Avatar m={s.member} size="s" />
@@ -168,12 +170,12 @@ export function TopPerformers() {
               <div><span className="nm">{s.member.name}</span><span className="hd">{handle(s.member)}</span></div>
               <Signs s={s} small />
             </div>
-            <span className="mono-lc">{Math.round((s.avg4 / s.target) * 100)}%</span>
+            <span className="mono-lc">{sc.total} pt</span>
           </Link>
         ))}
       </div>
-      <p className="small muted" style={{ marginTop: 8 }}>Ranked by streak, then the last four weeks&apos; hours against each member&apos;s commitment.</p>
-      <Link href="/team?view=overview" className="btn" style={{ marginTop: 18 }}>Review everyone&apos;s stats</Link>
+      <p className="small muted" style={{ marginTop: 8 }}>Finished task points plus 5 per week at commitment, last six weeks.</p>
+      <Link href="/team?view=leaderboard" className="btn" style={{ marginTop: 18 }}>Review everyone&apos;s stats</Link>
     </section>
   );
 }

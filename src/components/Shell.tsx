@@ -66,7 +66,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="side-nav">
-          {NAV.filter((n) => !n.admin || me.admin).map((n) => (
+          {NAV.filter((n) => !n.admin || me.admin || me.tier === "Core").map((n) => (
             <Link key={n.href} href={n.href} onClick={close} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
           ))}
         </nav>

@@ -38,6 +38,10 @@ In short: a member works only on what has been assigned to them. Once a task is 
 
 Everything above on every task: create, edit, assign, reassign, move between projects, schedule, change status, and create projects.
 
+## Team section
+
+Visible to **admins and Core members**. Core sees people, their member pages (week, performance, attendance, tasks), the leaderboard, overview, moving up / dropping and new members. Admin-only inside it: approvals, recording attendance, adding members, changing tiers, confirming graduation.
+
 ## Admin-only screens
 
 Admin role only, never granted by tier: the Team section (everyone's stats, moving up / dropping, onboarding overview), approvals (back-filled hours, pauses), recording meeting attendance, adding members, changing someone's tier.

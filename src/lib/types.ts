@@ -96,6 +96,8 @@ export interface Project {
 
 /** Columns of the team's Miro board: Idea lane, Priority lane, In progress, Validation, Done. */
 export type TaskStatus = "idea" | "todo" | "doing" | "review" | "done";
+/** Effort, set by Core or admin only; feeds the performance score (S/M/L = 1/3/8 points). */
+export type TaskSize = "S" | "M" | "L";
 export type Priority = "low" | "normal" | "high";
 
 export interface TaskEvent {
@@ -112,6 +114,7 @@ export interface Task {
   assigneeId: string | null;
   status: TaskStatus;
   priority: Priority;
+  size: TaskSize;
   start: string | null; // timeline bar start
   due: string | null; // timeline bar end
   doneAt: string | null;

@@ -404,7 +404,7 @@ img.float-img { height: auto; }
   .desk-grid.two { grid-template-columns: 420px 1fr; }
   .desk-grid.two-even { grid-template-columns: 1fr 1fr; }
   .panel { background: var(--paper); border: 1px solid var(--line); }
-  .panel.sticky { position: sticky; top: 28px; }
+  .panel.pinned { position: sticky; top: 28px; }
   .panel-d { background: var(--paper); border: 1px solid var(--line); }
   .glance-d { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 64px; align-items: start; padding-top: 8px; }
   .desk-headline { font-family: var(--serif); font-weight: 400; font-size: 52px; line-height: 1.1; color: var(--ink); letter-spacing: -0.01em; max-width: 760px; text-wrap: balance; margin: 0 0 22px; }
@@ -597,3 +597,21 @@ img.float-img { height: auto; }
   .dodont.big li { font-size: 30px; }
   .home .glance { max-width: 1180px; margin: 0 auto; }
 }
+.st-meta .st-size { margin-left: auto; margin-right: 6px; font-family: var(--mono); font-size: 10px; border: 1px solid rgba(0,0,0,0.35); padding: 0 4px; line-height: 14px; }
+.score-row { display: flex; justify-content: space-between; padding: 9px 0; font-size: 14.5px; color: var(--ink); }
+.member .phead .handle { margin-left: 8px; }
+/* leaderboard */
+.lb { border-top: 1px solid var(--line); }
+.lb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 84px 110px 56px; gap: 10px; align-items: center; padding: 10px var(--gutter); border-bottom: 1px solid var(--line); }
+a.lb-row:hover { background: #f1f1f1; }
+.lb-h { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 8px; padding-bottom: 8px; }
+.lb-rank { font-size: 24px; color: var(--ink); }
+.lb-who { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.lb-who .nm { display: block; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-bar { display: flex; height: 5px; margin-top: 6px; background: #ececec; }
+.lb-bar i { background: var(--ink); }
+.lb-bar b { background: #a9a9a9; }
+.lb-total { font-size: 26px; color: var(--ink); text-align: right; }
+@media (max-width: 600px) { .lb-row { grid-template-columns: 26px minmax(0, 1fr) 60px 46px; } .lb-row > :nth-child(4) { display: none; } }
+.desk-grid > * { min-width: 0; }
+.chips { flex-wrap: wrap; }
