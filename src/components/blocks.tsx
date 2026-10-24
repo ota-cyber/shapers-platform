@@ -42,7 +42,6 @@ export function Glance({ desk }: { desk?: boolean }) {
     .sort((a, b) => a.start.localeCompare(b.start));
   const nextOne = meets.length ? null : nextMeeting(db, me.id, now);
   const day = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
-  const buddy = db.members.find((m) => m.id === me.buddyId);
 
   const lists = (
     <div className="dodont">
@@ -67,7 +66,6 @@ export function Glance({ desk }: { desk?: boolean }) {
   const actions = onboarding ? (
     <>
       <Link href="/onboarding" className="btn" style={{ marginTop: 38 }}>Continue onboarding</Link>
-      {buddy && <p className="small muted" style={{ marginTop: 16 }}>Your buddy is <Link className="u" href={`/team/${buddy.id}`}>{buddy.name}</Link>. Twenty minutes, every week.</p>}
     </>
   ) : (
     <>
@@ -76,7 +74,7 @@ export function Glance({ desk }: { desk?: boolean }) {
       ) : (
         <button className="btn" style={{ marginTop: 38 }} onClick={clockIn}>Clock in</button>
       )}
-      <div style={{ marginTop: 16 }}><LogHoursLink /></div>
+      {me.tier === "Core" && <div style={{ marginTop: 16 }}><LogHoursLink /></div>}
     </>
   );
 
@@ -100,6 +98,83 @@ export function Glance({ desk }: { desk?: boolean }) {
       {orb}
       {lists}
       {actions}
+    </section>
+  );
+}
+
+/** True while a member still has onboarding steps left. */
+export function useOnboarding(): boolean {
+  const { me, onboardingDone } = useApp();
+  return me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
+}
+
+/** New members: who their buddy is, and a nudge to ask for help. */
+export function BuddyCard() {
+  const { me, member, standingOf } = useApp();
+  const b = member(me.buddyId);
+  if (!b) return null;
+  return (
+    <section className="sect buddy">
+      <div className="label m">Your buddy</div>
+      <div className="row" style={{ marginTop: 14 }}>
+        <Avatar m={b} />
+        <div className="grow">
+          <div><span className="h-m">{b.name}</span> <span className="muted small">{handle(b)}</span></div>
+          <Signs s={standingOf(b.id)} small />
+        </div>
+      </div>
+      <div className="h-l" style={{ marginTop: 18 }}>Stuck? Ask {first(b)}. That&apos;s what buddies are for.</div>
+      <p className="body" style={{ marginTop: 8 }}>
+        Nobody expects you to know how Shapers works yet. {first(b)} meets you for twenty minutes every week, and in between
+        any question counts: a task you&apos;re unsure about, who to talk to, how to log your hours.
+      </p>
+      <div className="row" style={{ marginTop: 14, flexWrap: "wrap" }}>
+        <span className="mono-lc" style={{ userSelect: "all" }}>{b.email}</span>
+        <CopyButton text={b.email} />
+      </div>
+    </section>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      className="btn-s"
+      onClick={() => navigator.clipboard?.writeText(text).then(() => setDone(true), () => setDone(false))}
+    >
+      {done ? "Copied" : "Copy email"}
+    </button>
+  );
+}
+
+/** Admins: the members doing best lately, by streak, then hours against their commitment. */
+export function TopPerformers() {
+  const { db, standingOf } = useApp();
+  const ranked = db.members
+    .filter((m) => m.onboarding === null)
+    .map((m) => standingOf(m.id))
+    .sort((a, b) => b.streak - a.streak || b.avg4 / b.target - a.avg4 / a.target)
+    .slice(0, 5);
+  return (
+    <section className="sect">
+      <div className="label m">Leading the way</div>
+      <div className="h-l" style={{ marginTop: 10 }}>Who&apos;s carrying the institute right now.</div>
+      <div style={{ marginTop: 10 }}>
+        {ranked.map((s, i) => (
+          <Link key={s.member.id} href={`/team/${s.member.id}`} className="person" style={{ padding: "12px 0" }}>
+            <span className="serif" style={{ fontSize: 26, width: 22 }}>{i + 1}</span>
+            <Avatar m={s.member} size="s" />
+            <div className="grow">
+              <div><span className="nm">{s.member.name}</span><span className="hd">{handle(s.member)}</span></div>
+              <Signs s={s} small />
+            </div>
+            <span className="mono-lc">{Math.round((s.avg4 / s.target) * 100)}%</span>
+          </Link>
+        ))}
+      </div>
+      <p className="small muted" style={{ marginTop: 8 }}>Ranked by streak, then the last four weeks&apos; hours against each member&apos;s commitment.</p>
+      <Link href="/team?view=overview" className="btn" style={{ marginTop: 18 }}>Review everyone&apos;s stats</Link>
     </section>
   );
 }

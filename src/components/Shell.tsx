@@ -9,8 +9,7 @@ import { ProfileHead, WeekStrip } from "./profile";
 
 const NAV = [
   { href: "/", label: "Home" },
-  { href: "/team", label: "Team" },
-  { href: "/ask", label: "Ask" },
+  { href: "/team", label: "Team", admin: true },
   { href: "/tasks", label: "Tasks" },
   { href: "/you", label: "You" },
 ];
@@ -56,7 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <WeekStrip memberId={me.id} />
         </div>
         <nav className="side-nav">
-          {NAV.map((n) => (
+          {NAV.filter((n) => !n.admin || me.admin).map((n) => (
             <Link key={n.href} href={n.href} onClick={close} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
           ))}
         </nav>

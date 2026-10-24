@@ -19,7 +19,6 @@ Co–Star's design language with Shapers content. Mobile is the Co–Star app (b
 | ⊙ Sun ☽ Moon ↑ Rising | ⊙ tier ☽ hours this week ↑ streak |
 | Friends, friend profile, compatibility | Team, member profile, "how it's going" |
 | Harmony / In flux / Challenges | To do / Doing / Done, and Present / Remote / Missed |
-| The Void | Ask (answers from your own data) |
 | Onboarding, Find Friends, notifications | Onboarding mirroring the two onboarding meetings |
 
 Tokens live at the top of `src/app/globals.css`. Fonts: Instrument Serif, Hanken Grotesk, DM Mono (free stand-ins for Co–Star's licensed Romana, Akkurat, Akkurat Mono). Images in `public/img` are generated halftones.
@@ -32,7 +31,6 @@ Tokens live at the top of `src/app/globals.css`. Fonts: Instrument Serif, Hanken
 | `src/lib/tiers.ts` | Tier rules as data + standing (streak, readiness, moving up / dropping), badges. |
 | `src/lib/store.tsx` | Client store. Each action below is one backend call. Persists to localStorage. |
 | `src/lib/seed.ts` | Sandbox data + seeds the sandbox lacks (projects, tasks, join dates, buddies, two onboarding members). |
-| `src/lib/ask.ts` | Rule-based answers for Ask. Swap for the agent, keep `{ context, text, action? }`. |
 | `src/data/sandbox.json` | Roster, hours, attendance, calendar, converted from the sandbox package. |
 
 ## Actions the backend needs

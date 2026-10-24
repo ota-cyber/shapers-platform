@@ -409,6 +409,8 @@ img.float-img { height: auto; }
   .glance-d .dodont { margin: 44px 0 0; max-width: 620px; gap: 40px; }
   .glance-d .dodont li { font-size: 23px; }
   .gd-side { padding-top: 40px; }
+  .home-row { margin-top: 56px; max-width: 1100px; }
+  .home-row > .panel:only-child { max-width: 640px; }
   .gd-side .orb { width: 340px; height: 340px; margin: 0 auto; }
   .board { grid-template-columns: repeat(3, 1fr); padding: 26px 0; align-items: start; }
   .toast { left: auto; right: 32px; bottom: 28px; width: 460px; }

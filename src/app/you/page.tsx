@@ -122,9 +122,11 @@ function Updates() {
           <Link href="/you?tab=chart" className="go">→</Link>
         </div>
       </section>
-      <div className="center" style={{ padding: "34px 0 40px" }}>
-        <button className="btn" onClick={() => setLog(true)}>Log hours you forgot</button>
-      </div>
+      {me.tier === "Core" && (
+        <div className="center" style={{ padding: "34px 0 40px" }}>
+          <button className="btn" onClick={() => setLog(true)}>Log hours you forgot</button>
+        </div>
+      )}
       {log && <LogHours onClose={() => setLog(false)} />}
     </>
   );
@@ -157,7 +159,6 @@ function Settings() {
       <div className="rows">
         <Link href="/you?tab=chart"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
-        <Link href="/ask"><span className="k">Ask a question</span><span className="go">→</span></Link>
       </div>
       <div className="group-h">Demo</div>
       <div className="rows">
