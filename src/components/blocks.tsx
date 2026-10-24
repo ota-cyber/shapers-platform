@@ -22,7 +22,6 @@ export function useHeadline(): string {
 
 export function Glance({ desk }: { desk?: boolean }) {
   const { me, now, today, db, clockIn, clockOut, onboardingDone } = useApp();
-  const line = useHeadline();
   const session = db.sessions.find((s) => s.memberId === me.id);
   const onboarding = me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
   const intro = (
@@ -87,7 +86,6 @@ export function Glance({ desk }: { desk?: boolean }) {
     return (
       <section className="glance-d">
         <div className="gd-main">
-          <h1 className="desk-headline">{line}</h1>
           {intro}
           {lists}
           <div>{actions}</div>
@@ -99,7 +97,6 @@ export function Glance({ desk }: { desk?: boolean }) {
   return (
     <section className="glance">
       {intro}
-      <h1 className="h-xl">{line}</h1>
       {orb}
       {lists}
       {actions}

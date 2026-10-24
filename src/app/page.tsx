@@ -3,14 +3,11 @@
 import { useApp } from "@/lib/store";
 import { AdminToday, Glance, NextMeeting, TeamFeed, WeekInSpace } from "@/components/blocks";
 import { TheEnd } from "@/components/ui";
-import { Wordmark } from "@/components/Shell";
 
 export default function Home() {
   const { my, me } = useApp();
   return (
     <>
-      <header className="mhead hide-d"><span /><Wordmark /><span /></header>
-
       {/* mobile: one column, Co–Star's home order */}
       <div className="page hide-d">
         <Glance />

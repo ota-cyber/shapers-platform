@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { headline, narrative } from "@/lib/copy";
 import { fmt, hoursLabel, addDays } from "@/lib/dates";
-import { EmojiLines, LogHours, NextMeeting } from "@/components/blocks";
+import { EmojiLines, LogHours, NextMeeting, useHeadline } from "@/components/blocks";
 import { AttendanceRecord, Badges, PathCard, ProfileHead, TierChart, TierRules, TiersTable, WeekStrip } from "@/components/profile";
 import { Img, Sheet, Tabs, Useful } from "@/components/ui";
 
@@ -33,6 +33,7 @@ function You() {
   const tab = (params.get("tab") as Tab) || "updates";
   const setTab = (t: Tab) => router.replace(`/you?tab=${t}`, { scroll: false });
   const s = db.sessions.find((x) => x.memberId === me.id);
+  const line = useHeadline();
 
   const body = (
     <>
@@ -66,6 +67,7 @@ function You() {
         {body}
       </div>
       <div className="page hide-m">
+        <h1 className="desk-headline">{line}</h1>
         <div className="desk-grid two">
           <div className="panel sticky">
             <ProfileHead s={my} you />
@@ -90,8 +92,8 @@ function Updates() {
   return (
     <>
       <section className="sect">
-        <div className="h-l">{headline(my, clocked, today)}</div>
-        <div style={{ marginTop: 16 }}><EmojiLines s={my} /></div>
+        <div className="h-l hide-d" style={{ marginBottom: 16 }}>{headline(my, clocked, today)}</div>
+        <EmojiLines s={my} />
         <Img name="stone" className="float-img" />
         <div className="body" style={{ marginTop: 6 }}><p>{p1}</p><p>{p2}</p></div>
         <div style={{ marginTop: 18 }}><Useful /></div>

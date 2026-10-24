@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { elapsed } from "@/lib/dates";
@@ -24,30 +25,45 @@ export function Wordmark() {
   return <span className="wordmark">Global — Shapers</span>;
 }
 
+/** Side menu on desktop; on mobile the same menu opens from the hamburger. */
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { me, prefs, setPrefs, db, stillWorkingDue, stillWorking, clockOut, now } = useApp();
+  const [open, setOpen] = useState(false);
   const session = db.sessions.find((s) => s.memberId === me.id);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const close = () => setOpen(false);
 
   return (
     <div className="app">
-      <header className="deskbar">
-        <Link href="/"><Wordmark /></Link>
-        <nav>
+      <header className="mbar">
+        <button className="burger" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
+          <span /><span /><span />
+        </button>
+        <Link href="/" onClick={close}><Wordmark /></Link>
+        <span />
+      </header>
+
+      {open && <div className="scrim" onClick={close} aria-hidden />}
+      <aside className={`sidebar ${open ? "open" : ""}`} aria-label="Menu">
+        <div className="side-top">
+          <Link href="/" onClick={close}><Wordmark /></Link>
+          <button className="side-close" onClick={close} aria-label="Close menu">✕</button>
+        </div>
+        <nav className="side-nav">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
+            <Link key={n.href} href={n.href} onClick={close} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
           ))}
         </nav>
-        <div className="who">
+        <div className="side-foot">
           {session && <span className="tag">On the clock {elapsed(session.start, now)}</span>}
-          <span>Viewing as</span>
-          <select value={prefs.meId} onChange={(e) => setPrefs({ meId: e.target.value })} aria-label="Demo: view as">
+          <label className="label m" htmlFor="view-as">Viewing as</label>
+          <select id="view-as" value={prefs.meId} onChange={(e) => { setPrefs({ meId: e.target.value }); close(); }}>
             {DEMO_PEOPLE.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             {!DEMO_PEOPLE.some((p) => p.id === prefs.meId) && <option value={prefs.meId}>{me.name}</option>}
           </select>
         </div>
-      </header>
+      </aside>
 
       <main>{children}</main>
 
@@ -59,12 +75,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <button onClick={clockOut} aria-label="Clock out">✕</button>
         </div>
       )}
-
-      <nav className="tabbar">
-        {NAV.map((n) => (
-          <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
-        ))}
-      </nav>
     </div>
   );
 }
