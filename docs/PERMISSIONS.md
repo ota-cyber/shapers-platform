@@ -29,6 +29,7 @@ Decided by Jure, 2026-10-24. **The backend must enforce these rules.** The UI hi
 | Pick up an unassigned task ("take it") | **no**: someone with full task access assigns it first | n/a |
 | Create a task **for themselves** (any project; it is assigned to them) | yes | n/a |
 | Create a task for someone else, or create a project | **no** | n/a |
+| Change a task's size (S / M / L) | **no** | no |
 | Delete a task | no | no |
 
 In short: a member works only on what has been assigned to them. Once a task is theirs, they can schedule it and fill it in however they like, but they cannot change who owns it, where it lives, or anything belonging to someone else.
@@ -47,6 +48,7 @@ Admin role only, never granted by tier: the Team section (everyone's stats, movi
 - Fields `assigneeId` and `projectId` are writable only by Core members and admins. Reject the whole request if anyone else sends them, even with an unchanged value.
 - `POST /tasks`: anyone. If the creator is GO!/Impact and not admin, force `assigneeId` to the creator (reject any other value).
 - `POST /projects`: Core members and admins only.
+- Field `size` (S / M / L) is writable only by Core members and admins: it feeds the performance score, so members must not be able to inflate it.
 - Admin endpoints (approvals, attendance recording, member and tier changes) check `user.admin` only, never the tier.
 - Keep writing the task history entry (who, what, when) on every change, so changes stay traceable.
 - Read the tier at request time, so a promotion or demotion changes task rights immediately.
@@ -58,3 +60,4 @@ When a new member picks projects during onboarding, the app only records their c
 ## Decided later
 
 - 2026-10-24: GO! and Impact members **can** create tasks for themselves (Jure).
+- 2026-10-24: tasks get a size, S / M / L = 1 / 3 / 8 points, set by Core or admin only (Jure). Used by the performance leaderboard: score = points of finished tasks + 5 per full weekly commitment met, hours judged against each member's own tier.
