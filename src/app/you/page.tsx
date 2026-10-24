@@ -70,7 +70,6 @@ function You() {
         <h1 className="desk-headline">{line}</h1>
         <div className="desk-grid two">
           <div className="panel sticky">
-            <WeekStrip memberId={me.id} />
             <PathCard s={my} href="/you?tab=chart" />
           </div>
           <div className="panel">

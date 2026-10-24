@@ -5,7 +5,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { elapsed } from "@/lib/dates";
-import { ProfileHead } from "./profile";
+import { ProfileHead, WeekStrip } from "./profile";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -51,9 +51,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/" onClick={close}><Wordmark /></Link>
           <button className="side-close" onClick={close} aria-label="Close menu">✕</button>
         </div>
-        <Link href="/you" onClick={close} className="side-me" aria-label="Your profile">
-          <ProfileHead s={my} you />
-        </Link>
+        <div className="side-me">
+          <Link href="/you" onClick={close} aria-label="Your profile"><ProfileHead s={my} you /></Link>
+          <WeekStrip memberId={me.id} />
+        </div>
         <nav className="side-nav">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} onClick={close} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>

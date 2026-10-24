@@ -89,13 +89,18 @@ img { display: block; max-width: 100%; }
 .side-top { display: flex; align-items: center; justify-content: space-between; }
 .side-top .wordmark { font-size: 26px; }
 .side-close { font-family: var(--mono); font-size: 14px; color: var(--text); }
-.side-me { display: block; margin: 0 -22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.side-me .phead { padding: 16px 22px; gap: 12px; align-items: flex-start; }
-.side-me .avatar { width: 48px; height: 48px; }
-.side-me .name { font-size: 23px; }
-.side-me .handle { font-size: 13px; }
-.side-me .signs { flex-direction: column; gap: 2px; font-size: 12px; }
-.side-me:hover { background: #f1f1f1; }
+.sidebar { overflow-y: auto; }
+.side-me { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.side-me > a { display: block; }
+.side-me .phead { padding: 14px 0 6px; gap: 10px; }
+.side-me .avatar { width: 40px; height: 40px; }
+.side-me .phead .name { font-size: 20px; }
+.side-me .phead .handle { font-size: 12px; margin-left: 4px; }
+.side-me .signs { font-size: 11px; gap: 2px 8px; margin-top: 3px; }
+.side-me .week { padding: 8px 0 10px; border-bottom: 0; }
+.side-me .week .dw { font-size: 9px; letter-spacing: 0; }
+.side-me .week .dn { width: 24px; height: 24px; font-size: 12px; }
+.side-me .notice { padding: 8px 0; background: none; border-bottom: 0; font-size: 12px; }
 .side-nav { display: flex; flex-direction: column; border-top: 1px solid var(--line); margin-top: auto; }
 .side-nav a { padding: 14px 0; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #6a6a6a; }
 .side-nav a[aria-current="page"] { color: var(--ink); }
