@@ -92,34 +92,47 @@ export default function MemberPage() {
           </div>
 
           {/* below: hours week by week and meeting stats, as on the profile */}
-          <div className="desk-grid two-even profile-grid" style={{ marginTop: 14 }}>
+          <div className="desk-grid two-even" style={{ marginTop: 14 }}>
             <div className="stack">
               <div className="card flush">
                 <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
                 <TierChart s={s} />
               </div>
+              <div className="card flush">
+                <div className="group-h">Open tasks · {open.length}</div>
+                <div className="rows">
+                  {open.map((t) => (
+                    <Link key={t.id} href={`/tasks?task=${t.id}`}>
+                      <span className="k">{t.title}<br /><span className="muted">{db.projects.find((p) => p.id === t.projectId)?.name}{t.due ? ` · due ${fmt.short(t.due)}` : ""}</span></span>
+                      <span className="v">{t.size ?? "M"}</span>
+                    </Link>
+                  ))}
+                  {!open.length && <div><span className="k muted">Nothing open</span></div>}
+                </div>
+              </div>
+              {me.admin && (
+                <section className="card">
+                  <div className="label">Admin</div>
+                  <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
+                    <span className="small">Tier</span>
+                    {(["GO!", "Impact", "Core"] as TierId[]).map((t) => (
+                      <button key={t} className={`btn-s ${m.tier === t ? "on" : ""}`} onClick={() => m.tier !== t && setPendingTier(t)}>{t}</button>
+                    ))}
+                  </div>
+                  {pendingTier && (
+                    <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
+                      <span className="small grow">Move {first(m)} to {pendingTier}? The time-in-tier clock restarts today.</span>
+                      <button className="btn-s on" onClick={() => { setTier(m.id, pendingTier); setPendingTier(null); }}>Move</button>
+                      <button className="btn-s" onClick={() => setPendingTier(null)}>Cancel</button>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
             <div className="stack">
               <div className="card flush"><AttendanceRecord memberId={m.id} their /></div>
             </div>
           </div>
-
-          <h2 className="sect-title">Open tasks</h2>
-          <div className="desk-grid two-even">
-            <div className="card flush">
-              <div className="group-h">Open · {open.length}</div>
-              <div className="rows">
-                {open.map((t) => (
-                  <Link key={t.id} href={`/tasks?task=${t.id}`}>
-                    <span className="k">{t.title}<br /><span className="muted">{db.projects.find((p) => p.id === t.projectId)?.name}{t.due ? ` · due ${fmt.short(t.due)}` : ""}</span></span>
-                    <span className="v">{t.size ?? "M"}</span>
-                  </Link>
-                ))}
-                {!open.length && <div><span className="k muted">Nothing open</span></div>}
-              </div>
-            </div>
-          </div>
-
 
           {m.onboarding !== null && (
             <>
@@ -155,26 +168,6 @@ export default function MemberPage() {
                 )}
               </div></div>
             </>
-          )}
-
-
-          {me.admin && (
-            <section className="sect">
-              <div className="label">Admin</div>
-              <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
-                <span className="small">Tier</span>
-                {(["GO!", "Impact", "Core"] as TierId[]).map((t) => (
-                  <button key={t} className={`btn-s ${m.tier === t ? "on" : ""}`} onClick={() => m.tier !== t && setPendingTier(t)}>{t}</button>
-                ))}
-              </div>
-              {pendingTier && (
-                <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
-                  <span className="small grow">Move {first(m)} to {pendingTier}? The time-in-tier clock restarts today.</span>
-                  <button className="btn-s on" onClick={() => { setTier(m.id, pendingTier); setPendingTier(null); }}>Move</button>
-                  <button className="btn-s" onClick={() => setPendingTier(null)}>Cancel</button>
-                </div>
-              )}
-            </section>
           )}
         </>
       )}
