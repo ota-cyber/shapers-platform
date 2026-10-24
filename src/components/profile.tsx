@@ -55,7 +55,7 @@ export function WeekStrip({ memberId }: { memberId: string }) {
 
 const face = (ok: boolean | null) => (ok === null ? ":|" : ok ? ":)" : ":(");
 
-export function PathCard({ s, href }: { s: Standing; href?: string }) {
+export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hidePace?: boolean }) {
   const m = s.member;
   if (!s.nextRule)
     return (
@@ -95,10 +95,12 @@ export function PathCard({ s, href }: { s: Standing; href?: string }) {
           <span className="face bar">{face(s.readiness.attendance)}</span>
           <div className="grow"><div className="t">Showing up</div><div className="s">{Math.round(s.attendanceRate * 100)}% attended · {s.attendance.unexcused} unexcused</div></div>
         </li>
-        <li>
-          <span className="face">{face(s.toNextPace === 0)}</span>
-          <div className="grow"><div className="t">{s.nextRule.id} pace this week</div><div className="s">{s.toNextPace === 0 ? "You're there" : `${hoursLabel(s.toNextPace!)} to ${s.nextRule.weeklyHours} h`}</div></div>
-        </li>
+        {!hidePace && (
+          <li>
+            <span className="face">{face(s.toNextPace === 0)}</span>
+            <div className="grow"><div className="t">{s.nextRule.id} pace this week</div><div className="s">{s.toNextPace === 0 ? "You're there" : `${hoursLabel(s.toNextPace!)} to ${s.nextRule.weeklyHours} h`}</div></div>
+          </li>
+        )}
       </ul>
       <p className="small muted" style={{ marginTop: 12 }}>Leadership decides promotions. This shows readiness, not a promise.</p>
       {href && <Link href={href} className="arrow" style={{ marginTop: 12 }}>Details →</Link>}

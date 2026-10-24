@@ -62,7 +62,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className="sp-num"><span className="serif">{hoursLabel(my.thisWeek).replace(" h", "")}</span> / {my.target} h</div>
             <Meter value={my.thisWeek} max={Math.max(my.target, my.thisWeek)} mark={my.target} />
             <div className="sp-line">↑ {my.streak}-week streak{my.toKeep > 0 ? ` · ${hoursLabel(my.toKeep)} to go` : " · week made"}</div>
-            <div className="side-path"><PathCard s={my} /></div>
+            <div className="side-path"><PathCard s={my} hidePace /></div>
           </div>
         </div>
         <nav className="side-nav">
