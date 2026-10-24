@@ -539,3 +539,10 @@ img.float-img { height: auto; }
 .greet { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.22; color: var(--ink); text-align: center; text-wrap: balance; max-width: 780px; margin: 0 auto; padding: 30px var(--gutter) 26px; }
 .greet a { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
 @media (min-width: 1000px) { .greet { font-size: 40px; padding: 34px 0 34px; } }
+.glance .greet { padding: 0 0 4px; }
+.home .glance { padding-bottom: 30px; }
+@media (min-width: 1000px) {
+  .home .dodont { max-width: 560px; gap: 40px; }
+  .home .dodont li { font-size: 22px; }
+  .home .home-row { max-width: none; margin-top: 0; }
+}

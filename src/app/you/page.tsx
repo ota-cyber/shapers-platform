@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { fmt, addDays } from "@/lib/dates";
 import { useHeadline } from "@/components/blocks";
-import { Badges, PathCard, ProfileHead } from "@/components/profile";
+import { AttendanceRecord, Badges, PathCard, ProfileHead } from "@/components/profile";
+import { MeetingsCard } from "@/components/home";
 import { Sheet, Tabs } from "@/components/ui";
 
 type Tab = "overview" | "settings";
@@ -38,9 +39,13 @@ function You() {
         <>
           <section className="sect"><h1 className="h-xl">{line}</h1></section>
           <div className="desk-grid two-even">
-            <PathCard s={my} href="/hours" />
-            <Badges s={my} />
+            <div className="stack">
+              <div className="card flush"><PathCard s={my} href="/hours" /></div>
+              <MeetingsCard />
+            </div>
+            <div className="card flush"><AttendanceRecord memberId={my.member.id} /></div>
           </div>
+          <Badges s={my} />
         </>
       ) : (
         <Settings />

@@ -8,9 +8,10 @@ import { fmt, hoursLabel } from "@/lib/dates";
 import { TIERS, type Standing } from "@/lib/tiers";
 import type { Member, Series } from "@/lib/types";
 import { ONBOARDING_STEPS } from "@/lib/seed";
+import { RecordMeetings } from "@/components/home";
 import { Avatar, Img, Meter, Sheet, Signs, first, handle } from "@/components/ui";
 
-type View = "everyone" | "up" | "dropping" | "new" | "approvals" | "overview";
+type View = "everyone" | "up" | "dropping" | "new" | "approvals" | "meetings" | "overview";
 
 export default function TeamPage() {
   return (
@@ -34,6 +35,7 @@ function Team() {
         { id: "dropping", label: "Dropping" },
         { id: "new", label: "New" },
         { id: "approvals", label: "Approvals" },
+        { id: "meetings", label: "Meetings" },
       ]
     : [
         { id: "everyone", label: "Everyone" },
@@ -51,6 +53,7 @@ function Team() {
   const content =
     view === "overview" ? <Overview /> :
     view === "approvals" ? <Approvals /> :
+    view === "meetings" ? <RecordMeetings /> :
     <People view={view} />;
 
   return (
