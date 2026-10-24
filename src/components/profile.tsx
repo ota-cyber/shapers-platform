@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 import { addDays, fmt, hoursLabel, weekStart } from "@/lib/dates";
 import { TIERS, attendanceFor, badges, type Standing } from "@/lib/tiers";
 import type { AttendanceState } from "@/lib/types";
-import { Avatar, Img, Signs, handle } from "./ui";
+import { Avatar, Img, Signs, StatusMark, handle, type Mark } from "./ui";
 
 export function ProfileHead({ s, you }: { s: Standing; you?: boolean }) {
   const m = s.member;
@@ -53,7 +53,7 @@ export function WeekStrip({ memberId }: { memberId: string }) {
   );
 }
 
-const face = (ok: boolean | null) => (ok === null ? ":|" : ok ? ":)" : ":(");
+const mark = (ok: boolean | null): Mark => (ok === null ? "neutral" : ok ? "good" : "bad");
 
 export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hidePace?: boolean }) {
   const { db, today } = useApp();
@@ -79,7 +79,7 @@ export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hi
       <div className="h-l" style={{ marginTop: 10 }}>Your way to {s.nextRule.id}</div>
       <ul className="compat" style={{ marginTop: 12 }}>
         <li className={recent > 0 ? "" : "bad"}>
-          <span className="face bar">{face(recent > 0)}</span>
+          <StatusMark state={mark(recent > 0)} bar />
           <div className="grow">
             <div className="t">Tasks finished</div>
             <div className="s">{doneTasks.length} done in {hoursLabel(clocked)} clocked · {recent} in the last 4 weeks</div>
@@ -87,7 +87,7 @@ export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hi
         </li>
         {m.tier === "GO!" ? (
           <li className={s.readiness.time ? "" : ""}>
-            <span className="face">{face(s.readiness.time)}</span>
+            <StatusMark state={mark(s.readiness.time)} />
             <div className="grow">
               <div className="t">Time in GO!</div>
               <div className="s">Month {Math.max(1, Math.ceil(months))} of 6 · since {fmt.short(m.tierSince)}</div>
@@ -95,21 +95,21 @@ export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hi
           </li>
         ) : (
           <li>
-            <span className="face">{face(null)}</span>
+            <StatusMark state={mark(null)} />
             <div className="grow"><div className="t">Recognition</div><div className="s">Core is by leadership recognition, not a clock</div></div>
           </li>
         )}
         <li className={s.readiness.hours ? "" : "bad"}>
-          <span className="face bar">{face(s.readiness.hours)}</span>
+          <StatusMark state={mark(s.readiness.hours)} bar />
           <div className="grow"><div className="t">Hours, week after week</div><div className="s">{kept} of {counted.length} weeks at {s.target} h · avg {hoursLabel(s.avg4)}</div></div>
         </li>
         <li className={s.readiness.attendance ? "" : "bad"}>
-          <span className="face bar">{face(s.readiness.attendance)}</span>
+          <StatusMark state={mark(s.readiness.attendance)} bar />
           <div className="grow"><div className="t">Showing up</div><div className="s">{Math.round(s.attendanceRate * 100)}% attended · {s.attendance.unexcused} unexcused</div></div>
         </li>
         {!hidePace && (
           <li>
-            <span className="face">{face(s.toNextPace === 0)}</span>
+            <StatusMark state={mark(s.toNextPace === 0)} />
             <div className="grow"><div className="t">{s.nextRule.id} pace this week</div><div className="s">{s.toNextPace === 0 ? "You're there" : `${hoursLabel(s.toNextPace!)} to ${s.nextRule.weeklyHours} h`}</div></div>
           </li>
         )}

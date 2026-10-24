@@ -10,7 +10,7 @@ import { ONBOARDING_STEPS } from "@/lib/seed";
 import { TIERS } from "@/lib/tiers";
 import type { TierId } from "@/lib/types";
 import { AttendanceRecord, PathCard, TierChart } from "@/components/profile";
-import { Avatar, Signs, Tabs, Useful, first, handle } from "@/components/ui";
+import { Avatar, Signs, StatusMark, Tabs, Useful, first, handle } from "@/components/ui";
 
 type Tab = "overview" | "hours" | "meetings" | "tasks";
 
@@ -77,7 +77,7 @@ export default function MemberPage() {
         <ul className="compat" style={{ marginTop: 10 }}>
           {faces.map((f) => (
             <li key={f.t} className={!f.ok && !f.mid ? "bad" : ""}>
-              <span className="face bar">{f.ok ? ":)" : f.mid ? ":|" : ":("}</span>
+              <StatusMark state={f.ok ? "good" : f.mid ? "neutral" : "bad"} bar />
               <div><div className="t">{f.t}</div><div className="s">{f.s} →</div></div>
             </li>
           ))}

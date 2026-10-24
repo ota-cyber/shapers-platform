@@ -106,3 +106,15 @@ export function Meter({ value, max, mark }: { value: number; max: number; mark?:
   );
 }
 
+
+export type Mark = "good" | "neutral" | "bad";
+
+const MARK_LABEL: Record<Mark, string> = { good: "On track", neutral: "In progress", bad: "Needs attention" };
+
+/**
+ * Status symbol slot. Empty for now: Jure is designing the symbols.
+ * To add them, render the symbol for `state` inside this span (one place for the whole app).
+ */
+export function StatusMark({ state, bar }: { state: Mark; bar?: boolean }) {
+  return <span className={`face mark mark-${state} ${bar ? "bar" : ""}`} data-state={state} title={MARK_LABEL[state]} aria-label={MARK_LABEL[state]} />;
+}
