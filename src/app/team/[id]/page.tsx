@@ -19,6 +19,7 @@ export default function MemberPage() {
   const router = useRouter();
   const { member, standingOf, me, db, today, onboardingDone, setTier, completeStep } = useApp();
   const [tab, setTab] = useState<Tab>("overview");
+  const [pendingTier, setPendingTier] = useState<TierId | null>(null);
   const m = member(id);
   if (!m) return <div className="empty">No such member.</div>;
   const s = standingOf(m.id);
@@ -65,7 +66,7 @@ export default function MemberPage() {
             <div className="bh">You&apos;re {first(m)}&apos;s buddy</div>
             <div className="bb center">
               <p className="small">{first(m)} is {hoursLabel(s.toKeep)} from their week. Not a warning. Just a good moment to ask how it&apos;s going.</p>
-              <a className="btn" style={{ marginTop: 14 }} href={`mailto:${m.email}?subject=How's it going?`}>Ask how it&apos;s going</a>
+              <p className="mono-lc" style={{ marginTop: 12, userSelect: "all" }}>{m.email}</p>
             </div>
           </div>
         </section>
@@ -113,7 +114,7 @@ export default function MemberPage() {
         </div>
       </section>
 
-      {me.id !== m.id && <PathCard s={s} href="#" />}
+      {me.id !== m.id && <PathCard s={s} />}
 
       {me.admin && (
         <section className="sect">
@@ -121,9 +122,16 @@ export default function MemberPage() {
           <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
             <span className="small">Tier</span>
             {(["GO!", "Impact", "Core"] as TierId[]).map((t) => (
-              <button key={t} className={`btn-s ${m.tier === t ? "on" : ""}`} onClick={() => m.tier !== t && confirm(`Move ${m.name} to ${t}? Their time-in-tier clock restarts today.`) && setTier(m.id, t)}>{t}</button>
+              <button key={t} className={`btn-s ${m.tier === t ? "on" : ""}`} onClick={() => m.tier !== t && setPendingTier(t)}>{t}</button>
             ))}
           </div>
+          {pendingTier && (
+            <div className="row" style={{ marginTop: 12, flexWrap: "wrap" }}>
+              <span className="small grow">Move {first(m)} to {pendingTier}? The time-in-tier clock restarts today.</span>
+              <button className="btn-s on" onClick={() => { setTier(m.id, pendingTier); setPendingTier(null); }}>Move</button>
+              <button className="btn-s" onClick={() => setPendingTier(null)}>Cancel</button>
+            </div>
+          )}
         </section>
       )}
     </>

@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { imgSrc } from "@/lib/assets";
 import type { Member } from "@/lib/types";
 import type { Standing } from "@/lib/tiers";
 import { hoursLabel } from "@/lib/dates";
 
 export function Img({ name, alt = "", className }: { name: string; alt?: string; className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/img/${name}.webp`} alt={alt} className={className} loading="lazy" />;
+  return <img src={imgSrc(name)} alt={alt} className={className} loading="lazy" />;
 }
 
 export function Avatar({ m, size }: { m: Member; size?: "s" | "m" }) {
@@ -110,7 +112,7 @@ export function TheEnd({ line, href }: { line: string; href: string }) {
     <div className="the-end">
       <div className="dust" />
       <div className="h-l">The end</div>
-      <a className="link" href={href} style={{ display: "inline-block", marginTop: 18 }}>{line}</a>
+      <Link className="link" href={href} style={{ display: "inline-block", marginTop: 18 }}>{line}</Link>
     </div>
   );
 }

@@ -31,7 +31,7 @@ export default function Home() {
             <ProfileHead s={my} />
             <WeekStrip memberId={me.id} />
             <div className="sect"><EmojiLines s={my} /></div>
-            <PathCard s={my} />
+            <PathCard s={my} href="/you?tab=chart" />
           </div>
           <div className="panel">
             <div className="mhead" style={{ position: "static" }}><span /><Wordmark /><span /></div>

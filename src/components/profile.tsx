@@ -55,7 +55,7 @@ export function WeekStrip({ memberId }: { memberId: string }) {
 
 const face = (ok: boolean | null) => (ok === null ? ":|" : ok ? ":)" : ":(");
 
-export function PathCard({ s, href = "/you?tab=chart" }: { s: Standing; href?: string }) {
+export function PathCard({ s, href }: { s: Standing; href?: string }) {
   const m = s.member;
   if (!s.nextRule)
     return (
@@ -101,7 +101,7 @@ export function PathCard({ s, href = "/you?tab=chart" }: { s: Standing; href?: s
         </li>
       </ul>
       <p className="small muted" style={{ marginTop: 12 }}>Leadership decides promotions. This shows readiness, not a promise.</p>
-      <Link href={href} className="arrow" style={{ marginTop: 12 }}>Details →</Link>
+      {href && <Link href={href} className="arrow" style={{ marginTop: 12 }}>Details →</Link>}
     </section>
   );
 }

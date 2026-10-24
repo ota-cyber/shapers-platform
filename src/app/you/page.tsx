@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
@@ -103,7 +104,7 @@ function Updates() {
             ? `Every week you reach ${my.target} h adds one. Pause weeks hold it where it is; they never break it.`
             : `Reach ${my.target} h this week and the count begins. Nobody is keeping score but you and the wall chart.`}
         </p>
-        <a href="/you?tab=chart" className="arrow" style={{ marginTop: 12 }}>Details →</a>
+        <Link href="/you?tab=chart" className="arrow" style={{ marginTop: 12 }}>Details →</Link>
       </section>
       <PathCard s={my} />
       <section className="sect">
@@ -118,7 +119,7 @@ function Updates() {
             <div className="h-m">Your hours, week by week</div>
             <p className="small faint">Six weeks of history, plus this one. {hoursLabel(my.avg4)} a week on average lately.</p>
           </div>
-          <a href="/you?tab=chart" className="go">→</a>
+          <Link href="/you?tab=chart" className="go">→</Link>
         </div>
       </section>
       <div className="center" style={{ padding: "34px 0 40px" }}>
@@ -133,6 +134,7 @@ function Settings() {
   const { me, member, prefs, setPrefs, reset, db, today, requestPause } = useApp();
   const buddy = member(me.buddyId);
   const [pause, setPause] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const mine = db.pauses.filter((p) => p.memberId === me.id);
   return (
     <>
@@ -153,9 +155,9 @@ function Settings() {
       </div>
       <div className="group-h">Support</div>
       <div className="rows">
-        <a href="/you?tab=chart"><span className="k">Tier rules</span><span className="go">→</span></a>
-        <a href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></a>
-        <a href="/ask"><span className="k">Ask a question</span><span className="go">→</span></a>
+        <Link href="/you?tab=chart"><span className="k">Tier rules</span><span className="go">→</span></Link>
+        <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
+        <Link href="/ask"><span className="k">Ask a question</span><span className="go">→</span></Link>
       </div>
       <div className="group-h">Demo</div>
       <div className="rows">
@@ -171,9 +173,17 @@ function Settings() {
           <span className="k" style={{ textAlign: "left" }}>Pretend my next meeting is live</span>
           <span className="v">{prefs.liveMeeting ? "On" : "Off"}</span>
         </button>
-        <button onClick={() => confirm("Reset all demo data?") && reset()} style={{ width: "100%" }}>
-          <span className="k" style={{ textAlign: "left" }}>Reset demo data</span><span className="go">→</span>
-        </button>
+        {resetting ? (
+          <div>
+            <span className="k">Reset all demo data?</span>
+            <button className="btn-s on" onClick={() => { reset(); setResetting(false); }}>Reset</button>
+            <button className="btn-s" onClick={() => setResetting(false)}>Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setResetting(true)} style={{ width: "100%" }}>
+            <span className="k" style={{ textAlign: "left" }}>Reset demo data</span><span className="go">→</span>
+          </button>
+        )}
       </div>
       <div style={{ height: 40 }} />
       {pause && <PauseSheet onClose={() => setPause(false)} onSave={(f, t, r) => { requestPause(f, t, r); setPause(false); }} today={today} tier={me.tier} />}
