@@ -6,6 +6,7 @@ import { useApp } from "@/lib/store";
 import { addDays, fmt, hoursLabel, weekStart } from "@/lib/dates";
 import { TIERS, attendanceFor, badges, type Standing } from "@/lib/tiers";
 import type { AttendanceState } from "@/lib/types";
+import { MeetingsCard } from "./home";
 import { Avatar, Img, Signs, StatusMark, handle, type Mark } from "./ui";
 
 export function ProfileHead({ s, you }: { s: Standing; you?: boolean }) {
@@ -219,10 +220,10 @@ export function TierRules({ tier }: { tier: string }) {
       <div className="glyph">{t.glyph}</div>
       <div className="bh">{t.name}<br />{t.presence}<br />Notice period: {t.notice}</div>
       <p>{t.who}</p>
-      <p><b style={{ fontWeight: 500 }}>Community meetings.</b> {t.community}</p>
+      {t.community !== "Not defined" && <p><b style={{ fontWeight: 500 }}>Community meetings.</b> {t.community}</p>}
       {t.absence !== "Not defined" && <p><b style={{ fontWeight: 500 }}>Absences.</b> {t.absence}</p>}
       {t.consequence !== "Not defined" && <p><b style={{ fontWeight: 500 }}>If you miss one.</b> {t.consequence}</p>}
-      <p><b style={{ fontWeight: 500 }}>Pauses.</b> {t.pause} Pause weeks never count as falling behind and never break a streak.</p>
+      <p><b style={{ fontWeight: 500 }}>Pauses.</b> {t.pause !== "Not defined" ? `${t.pause} ` : ""}Pause weeks never count as falling behind and never break a streak.</p>
     </div>
   );
 }
@@ -269,9 +270,23 @@ export function AttendanceRecord({ memberId }: { memberId: string }) {
   );
 }
 
-export function Badges({ s }: { s: Standing }) {
+export function Badges({ s, compact }: { s: Standing; compact?: boolean }) {
   const { db } = useApp();
   const list = badges(db, s);
+  if (compact)
+    return (
+      <section className="card badges-s">
+        <div className="card-h"><span className="label">Badges</span><span className="mono-lc muted">{list.filter((b) => b.earned).length} of {list.length}</span></div>
+        <div className="badge-grid">
+          {list.map((b) => (
+            <div key={b.id} className="badge-s" style={{ opacity: b.earned ? 1 : 0.3 }} title={b.earned ? b.line : "Not yet"}>
+              <Img name={b.image} alt="" />
+              <span>{b.name}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
   return (
     <section className="sect">
       <div className="label">Badges · {list.filter((b) => b.earned).length} of {list.length}</div>
@@ -285,6 +300,29 @@ export function Badges({ s }: { s: Standing }) {
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * The profile body, shared by You and Team → member.
+ * Left: tier rules, attendance, hours week by week. Right: badges, meeting record.
+ */
+export function ProfileGrid({ s }: { s: Standing }) {
+  return (
+    <div className="desk-grid two-even">
+      <div className="stack">
+        <TierRules tier={s.member.tier} />
+        <MeetingsCard memberId={s.member.id} />
+        <div className="card flush">
+          <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
+          <TierChart s={s} />
+        </div>
+      </div>
+      <div className="stack">
+        <Badges s={s} compact />
+        <div className="card flush"><AttendanceRecord memberId={s.member.id} /></div>
+      </div>
+    </div>
   );
 }
 

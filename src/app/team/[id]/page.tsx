@@ -9,8 +9,7 @@ import { myOpenTasks } from "@/lib/copy";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { score, TASK_POINTS } from "@/lib/score";
 import type { TierId } from "@/lib/types";
-import { AttendanceRecord, Badges, PathCard, TierChart, TierRules, TiersTable } from "@/components/profile";
-import { MeetingsCard } from "@/components/home";
+import { PathCard, ProfileGrid } from "@/components/profile";
 import { WeekTimeline } from "@/components/week";
 import { Avatar, Signs, first, handle } from "@/components/ui";
 
@@ -83,16 +82,7 @@ export default function MemberPage() {
             </div>
           </div>
 
-          <div className="desk-grid two-even" style={{ marginTop: 14 }}>
-            <div className="card flush">
-              <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
-              <TierChart s={s} />
-            </div>
-            <div className="stack">
-              <MeetingsCard memberId={m.id} />
-              <div className="card flush"><AttendanceRecord memberId={m.id} /></div>
-            </div>
-          </div>
+          <div style={{ marginTop: 14 }}><ProfileGrid s={s} /></div>
 
           <h2 className="sect-title">Tasks</h2>
           <div className="desk-grid two-even">
@@ -119,11 +109,6 @@ export default function MemberPage() {
             </div>
           </div>
 
-          <h2 className="sect-title">Tier</h2>
-          <div className="desk-grid two-even">
-            <div className="card flush"><TiersTable current={m.tier} /></div>
-            <TierRules tier={m.tier} />
-          </div>
 
           {m.onboarding !== null && (
             <>
@@ -161,7 +146,6 @@ export default function MemberPage() {
             </>
           )}
 
-          <Badges s={s} />
 
           {me.admin && (
             <section className="sect">

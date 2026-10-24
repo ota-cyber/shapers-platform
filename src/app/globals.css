@@ -615,3 +615,8 @@ a.lb-row:hover { background: #f1f1f1; }
 @media (max-width: 600px) { .lb-row { grid-template-columns: 26px minmax(0, 1fr) 60px 46px; } .lb-row > :nth-child(4) { display: none; } }
 .desk-grid > * { min-width: 0; }
 .chips { flex-wrap: wrap; }
+/* compact badges box (profile) */
+.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 8px; margin-top: 4px; }
+.badge-s { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.badge-s img { width: 52px; height: 52px; object-fit: contain; mix-blend-mode: multiply; }
+.badge-s span { font-family: var(--serif); font-size: 15px; color: var(--ink); line-height: 1.15; }
