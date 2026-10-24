@@ -1,13 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useApp } from "@/lib/store";
-import { AdminToday, EmojiLines, Glance, NextMeeting, TeamFeed, WeekInSpace, useHeadline } from "@/components/blocks";
-
-function DeskHeadline() {
-  return <h1 className="desk-headline">{useHeadline()}</h1>;
-}
-import { PathCard, ProfileHead, WeekStrip } from "@/components/profile";
+import { AdminToday, Glance, NextMeeting, TeamFeed, WeekInSpace } from "@/components/blocks";
 import { TheEnd } from "@/components/ui";
 import { Wordmark } from "@/components/Shell";
 
@@ -28,30 +22,9 @@ export default function Home() {
         <TheEnd line={me.tier === "Core" ? "See how the institute is doing" : `See your path to ${my.nextRule?.id ?? "Core"}`} href={me.tier === "Core" && me.admin ? "/team?view=overview" : "/you?tab=chart"} />
       </div>
 
-      {/* desktop: the website's three-phone row, as three panels */}
+      {/* desktop: the glance is the whole page */}
       <div className="page hide-m">
-        <DeskHeadline />
-        <div className="desk-grid three">
-          <div className="panel">
-            <ProfileHead s={my} />
-            <WeekStrip memberId={me.id} />
-            <div className="sect"><EmojiLines s={my} /></div>
-            <PathCard s={my} href="/you?tab=chart" />
-          </div>
-          <div className="panel">
-            <div className="mhead" style={{ position: "static" }}><span /><Wordmark /><span /></div>
-            <Glance hideHeadline />
-            <NextMeeting />
-          </div>
-          <div className="stack">
-            {me.admin && <div className="panel"><AdminToday /></div>}
-            <div className="panel"><WeekInSpace s={my} /></div>
-            <div className="panel"><TeamFeed /></div>
-          </div>
-        </div>
-        <div className="center" style={{ marginTop: 40 }}>
-          <Link href="/you?tab=chart" className="link">Your path through the tiers</Link>
-        </div>
+        <Glance desk />
       </div>
     </>
   );

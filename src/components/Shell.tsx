@@ -32,7 +32,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app">
-      <GridLines />
       <header className="deskbar">
         <Link href="/"><Wordmark /></Link>
         <nav>
@@ -67,20 +66,5 @@ export function Shell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
     </div>
-  );
-}
-
-/** The faint perspective line field from costarastrology.com, desktop only. */
-function GridLines() {
-  const lines = [];
-  for (let i = -12; i <= 12; i++) lines.push(<line key={`r${i}`} x1={720} y1={-200} x2={720 + i * 260} y2={1200} />);
-  for (let j = 0; j < 14; j++) {
-    const y = 120 + Math.pow(j, 1.6) * 22;
-    lines.push(<line key={`h${j}`} x1={0} y1={y} x2={1440} y2={y} />);
-  }
-  return (
-    <svg className="gridlines hide-m" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden>
-      <g stroke="#d6d6d6" strokeWidth="1">{lines}</g>
-    </svg>
   );
 }

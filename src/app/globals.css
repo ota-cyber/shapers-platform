@@ -131,6 +131,9 @@ img { display: block; max-width: 100%; }
 .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 34px auto 0; max-width: 340px; }
 .dodont .lbl { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; color: var(--text); margin-bottom: 4px; }
 .dodont li { list-style: none; font-family: var(--serif); font-size: 19px; line-height: 1.32; color: var(--ink); }
+.dodont li a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.dodont li.muted { color: var(--muted); }
+.next-meet { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 6px; }
 
 /* ---------- toast (Co–Star's "NEW YEAR DETECTED" bar) ---------- */
 .toast {
@@ -381,8 +384,13 @@ img.float-img { height: auto; }
   .panel { background: var(--paper); border: 1px solid var(--line); }
   .panel.sticky { position: sticky; top: 100px; }
   .panel-d { background: var(--paper); border: 1px solid var(--line); }
-  .desk-headline { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1.12; color: var(--ink); letter-spacing: -0.01em; max-width: 760px; text-wrap: balance; margin: 0 0 30px; }
-  .page:has(> .desk-headline) { padding-top: 28px; }
+  .glance-d { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 64px; align-items: start; padding-top: 8px; }
+  .desk-headline { font-family: var(--serif); font-weight: 400; font-size: 52px; line-height: 1.1; color: var(--ink); letter-spacing: -0.01em; max-width: 760px; text-wrap: balance; margin: 0 0 22px; }
+  .glance-d .intro { font-size: 15px; max-width: 560px; }
+  .glance-d .dodont { margin: 44px 0 0; max-width: 620px; gap: 40px; }
+  .glance-d .dodont li { font-size: 23px; }
+  .gd-side { padding-top: 40px; }
+  .gd-side .orb { width: 340px; height: 340px; margin: 0 auto; }
   .board { grid-template-columns: repeat(3, 1fr); padding: 26px 0; align-items: start; }
   .toast { left: auto; right: 32px; bottom: 28px; width: 460px; }
   .tip { right: 32px; bottom: 90px; }
@@ -398,8 +406,6 @@ img.float-img { height: auto; }
   .hide-m { display: none !important; }
 }
 
-/* perspective grid behind desktop pages (the website's line field) */
-.gridlines { position: fixed; inset: 0; z-index: 0; pointer-events: none; width: 100vw; height: 100vh; }
 .app > main, .app > header, .app > .toast, .app > .tabbar { position: relative; z-index: 1; }
 .app > header.deskbar { position: sticky; z-index: 30; }
 .app > .toast, .app > .tabbar { position: fixed; }

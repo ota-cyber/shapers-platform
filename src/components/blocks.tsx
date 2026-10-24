@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useApp, attendanceOf } from "@/lib/store";
-import { addDays, elapsed, fmt, greeting, hoursLabel } from "@/lib/dates";
-import { doDont, emojiLines, headline, nextMeeting } from "@/lib/copy";
+import { addDays, elapsed, fmt, greeting, hoursLabel, isoDate, weekStart } from "@/lib/dates";
+import { emojiLines, headline, myOpenTasks, nextMeeting } from "@/lib/copy";
 import type { Standing } from "@/lib/tiers";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { Avatar, Img, Sheet, Signs, first, handle } from "./ui";
@@ -20,8 +20,8 @@ export function useHeadline(): string {
   return headline(my, db.sessions.some((s) => s.memberId === me.id), today);
 }
 
-export function Glance({ hideHeadline }: { hideHeadline?: boolean }) {
-  const { me, my, now, today, db, clockIn, clockOut, onboardingDone } = useApp();
+export function Glance({ desk }: { desk?: boolean }) {
+  const { me, now, today, db, clockIn, clockOut, onboardingDone } = useApp();
   const line = useHeadline();
   const session = db.sessions.find((s) => s.memberId === me.id);
   const onboarding = me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
@@ -32,41 +32,77 @@ export function Glance({ hideHeadline }: { hideHeadline?: boolean }) {
     </p>
   );
 
-  if (onboarding) {
-    const done = onboardingDone(me);
-    const left = ONBOARDING_STEPS.filter((s) => !done[s.id]);
-    const buddy = db.members.find((m) => m.id === me.buddyId);
-    return (
-      <section className="glance">
-        {intro}
-        {!hideHeadline && <h1 className="h-xl">{line}</h1>}
-        <div className="orb"><Img name="hands" /></div>
-        <div className="dodont">
-          <div><div className="lbl">Do</div><ul>{left.slice(0, 3).map((s) => <li key={s.id}>{s.title.replace(/^(Read|Learn|Get|Pick|Clock|Finish|Attend|Subscribe to) /, "").replace(/^./, (c) => c.toUpperCase())}</li>)}</ul></div>
-          <div><div className="lbl">Don&apos;t</div><ul><li>Wait to be asked</li><li>Nod along</li><li>Skip Community</li></ul></div>
-        </div>
-        <Link href="/onboarding" className="btn" style={{ marginTop: 38 }}>Continue onboarding</Link>
-        {buddy && <p className="small muted" style={{ marginTop: 16 }}>Your buddy is <Link className="u" href={`/team/${buddy.id}`}>{buddy.name}</Link>. Twenty minutes, every week.</p>}
-      </section>
-    );
-  }
+  // Do: what's still open. Meet: meetings left this week (Mon–Sun).
+  const done = onboardingDone(me);
+  const doItems: { key: string; label: string; href: string }[] = onboarding
+    ? ONBOARDING_STEPS.filter((s) => !done[s.id]).slice(0, 3).map((s) => ({ key: s.id, label: s.title, href: "/onboarding" }))
+    : myOpenTasks(db, me.id).slice(0, 3).map((t) => ({ key: t.id, label: t.title, href: `/tasks?task=${t.id}` }));
+  const weekEnd = addDays(weekStart(today), 6);
+  const meets = db.meetings
+    .filter((m) => m.memberIds.includes(me.id) && new Date(m.end) > now && isoDate(new Date(m.start)) <= weekEnd)
+    .sort((a, b) => a.start.localeCompare(b.start));
+  const nextOne = meets.length ? null : nextMeeting(db, me.id, now);
+  const day = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
+  const buddy = db.members.find((m) => m.id === me.buddyId);
 
-  const dd = doDont(db, my, now, today);
-  return (
-    <section className="glance">
-      {intro}
-      {!hideHeadline && <h1 className="h-xl">{line}</h1>}
-      <div className="orb"><Img name={session ? "stopwatch" : "hourglass"} /></div>
-      <div className="dodont">
-        <div><div className="lbl">Do</div><ul>{dd.do.map((x) => <li key={x}>{x}</li>)}</ul></div>
-        <div><div className="lbl">Don&apos;t</div><ul>{dd.dont.map((x) => <li key={x}>{x}</li>)}</ul></div>
+  const lists = (
+    <div className="dodont">
+      <div>
+        <div className="lbl">Do</div>
+        <ul>
+          {doItems.map((d) => <li key={d.key}><Link href={d.href}>{d.label}</Link></li>)}
+          {!doItems.length && <li className="muted">Nothing pending</li>}
+        </ul>
       </div>
+      <div>
+        <div className="lbl">Meet</div>
+        <ul>
+          {meets.map((m) => <li key={m.id}><Link href={`/meetings/${m.id}`}>{m.series}, {day(m.start)} {fmt.time(m.start)}</Link></li>)}
+          {!meets.length && <li className="muted">Nothing left this week</li>}
+        </ul>
+        {nextOne && <div className="next-meet">Next: {nextOne.series}, {day(nextOne.start)} {fmt.short(nextOne.start)}</div>}
+      </div>
+    </div>
+  );
+
+  const actions = onboarding ? (
+    <>
+      <Link href="/onboarding" className="btn" style={{ marginTop: 38 }}>Continue onboarding</Link>
+      {buddy && <p className="small muted" style={{ marginTop: 16 }}>Your buddy is <Link className="u" href={`/team/${buddy.id}`}>{buddy.name}</Link>. Twenty minutes, every week.</p>}
+    </>
+  ) : (
+    <>
       {session ? (
         <button className="btn outline" style={{ marginTop: 38 }} onClick={clockOut}>Clock out · {elapsed(session.start, now)}</button>
       ) : (
         <button className="btn" style={{ marginTop: 38 }} onClick={clockIn}>Clock in</button>
       )}
       <div style={{ marginTop: 16 }}><LogHoursLink /></div>
+    </>
+  );
+
+  const orb = <div className="orb"><Img name={onboarding ? "hands" : session ? "stopwatch" : "hourglass"} /></div>;
+
+  if (desk)
+    return (
+      <section className="glance-d">
+        <div className="gd-main">
+          <h1 className="desk-headline">{line}</h1>
+          {intro}
+          {lists}
+          <div>{actions}</div>
+        </div>
+        <div className="gd-side">{orb}</div>
+      </section>
+    );
+
+  return (
+    <section className="glance">
+      {intro}
+      <h1 className="h-xl">{line}</h1>
+      {orb}
+      {lists}
+      {actions}
     </section>
   );
 }

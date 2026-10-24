@@ -8,18 +8,6 @@ import { addDays, fmt, hoursLabel, weekStart } from "./dates";
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => WORDS[n] ?? String(n);
 
-function pick<T>(arr: T[], seed: string, n: number): T[] {
-  let h = 0;
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  const out: T[] = [];
-  const pool = [...arr];
-  while (out.length < n && pool.length) {
-    out.push(pool.splice(h % pool.length, 1)[0]);
-    h = (h * 1103515245 + 12345) >>> 0;
-  }
-  return out;
-}
-
 function spoken(h: number): string {
   if (h <= 0.5) return "Half an hour";
   if (h <= 1) return "One hour";
@@ -50,24 +38,6 @@ export function myOpenTasks(db: Db, memberId: string): Task[] {
   return db.tasks
     .filter((t) => t.assigneeId === memberId && t.status !== "done")
     .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
-}
-
-const shortTask = (t: Task) => t.title.split(" ").slice(0, 3).join(" ");
-
-export function doDont(db: Db, s: Standing, now: Date, today: string): { do: string[]; dont: string[] } {
-  const m = nextMeeting(db, s.member.id, now);
-  const t = myOpenTasks(db, s.member.id)[0];
-  const doList = [
-    s.toKeep > 0 ? "The Hub, today" : "A slow extra hour",
-    m ? `${m.series === "Community" ? "Community" : m.series}, ${fmt.dow(m.start).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase())}` : "Ask your buddy",
-    t ? shortTask(t) : "Pick up a task",
-  ];
-  const dont = pick(
-    ["Back-filling from memory", "Skipping Community", "Carrying it alone", "Ghosting your buddy", "Overpromising", "Silent absences", "Tasks without dates", "Meetings as hours"],
-    today + s.member.id,
-    3,
-  );
-  return { do: doList, dont };
 }
 
 export interface Line {
