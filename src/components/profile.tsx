@@ -56,6 +56,7 @@ export function WeekStrip({ memberId }: { memberId: string }) {
 const face = (ok: boolean | null) => (ok === null ? ":|" : ok ? ":)" : ":(");
 
 export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hidePace?: boolean }) {
+  const { db, today } = useApp();
   const m = s.member;
   if (!s.nextRule)
     return (
@@ -67,12 +68,23 @@ export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hi
     );
   const months = Math.min(6, s.monthsInTier);
   const counted = s.weeks.filter((w) => !w.current && !w.paused);
+  // Finished tasks weigh more than hours: show them against the hours clocked.
+  const doneTasks = db.tasks.filter((t) => t.assigneeId === m.id && t.status === "done");
+  const recent = doneTasks.filter((t) => t.doneAt && t.doneAt >= addDays(today, -28)).length;
+  const clocked = s.weeks.reduce((sum, w) => sum + w.hours, 0);
   const kept = counted.filter((w) => w.kept).length;
   return (
     <section className="sect">
       <div className="label">Path</div>
       <div className="h-l" style={{ marginTop: 10 }}>Your way to {s.nextRule.id}</div>
       <ul className="compat" style={{ marginTop: 12 }}>
+        <li className={recent > 0 ? "" : "bad"}>
+          <span className="face bar">{face(recent > 0)}</span>
+          <div className="grow">
+            <div className="t">Tasks finished</div>
+            <div className="s">{doneTasks.length} done in {hoursLabel(clocked)} clocked · {recent} in the last 4 weeks</div>
+          </div>
+        </li>
         {m.tier === "GO!" ? (
           <li className={s.readiness.time ? "" : ""}>
             <span className="face">{face(s.readiness.time)}</span>

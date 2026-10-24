@@ -60,9 +60,9 @@ function Tasks() {
           <p className="mono-lc muted">{open} open · {late} late · drag a note to move it</p>
         </div>
         <div className="tasks-controls">
+          {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
           <Toggle value={view} onChange={setView} items={[["board", "Board"], ["timeline", "Timeline"]]} />
           <Toggle value={scope} onChange={setScope} items={[["all", "Everyone"], ["mine", "Mine"]]} />
-          {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
           <button className="btn" onClick={() => setAdding(true)}>New task</button>
         </div>
       </div>
