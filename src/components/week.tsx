@@ -30,8 +30,9 @@ const day3 = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^.
 
 /** Wraps Do / Meet and the week so tasks can be dragged from one to the other. */
 export function WeekPlanner({ onboarding, children }: { onboarding: boolean; children?: React.ReactNode }) {
-  const { db, me, setTaskDates } = useApp();
+  const { db, me } = useApp();
   const [dragging, setDragging] = useState<Task | null>(null);
+  const [planning, setPlanning] = useState<{ id: string; day: string } | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
@@ -40,9 +41,8 @@ export function WeekPlanner({ onboarding, children }: { onboarding: boolean; chi
     setDragging(null);
     const t = db.tasks.find((x) => `do:${x.id}` === e.active.id);
     if (!t || !e.over || !taskRights(me, t).edit) return;
-    // Planning moves the start; the deadline stays unless the planned day is past it.
-    const day = String(e.over.id).replace("day:", "");
-    setTaskDates(t.id, day, t.due && t.due >= day ? t.due : day);
+    // Dropping opens the task's dates first; nothing changes until Save.
+    setPlanning({ id: t.id, day: String(e.over.id).replace("day:", "") });
   };
   return (
     <DndContext
@@ -55,6 +55,7 @@ export function WeekPlanner({ onboarding, children }: { onboarding: boolean; chi
       {children}
       <WeekTimeline />
       <DragOverlay dropAnimation={null}>{dragging ? <TaskCard t={dragging} /> : null}</DragOverlay>
+      {planning && <PlanSheet id={planning.id} day={planning.day} onClose={() => setPlanning(null)} />}
     </DndContext>
   );
 }
@@ -96,6 +97,33 @@ function DraggableDo({ t }: { t: Task }) {
     <li ref={setNodeRef} {...listeners} {...attributes} className="do-drag" style={{ opacity: isDragging ? 0.3 : 1 }}>
       {t.title}
     </li>
+  );
+}
+
+/** Opens after a task is dropped on a day: set its dates, then save. */
+function PlanSheet({ id, day, onClose }: { id: string; day: string; onClose: () => void }) {
+  const { db, setTaskDates } = useApp();
+  const t = db.tasks.find((x) => x.id === id)!;
+  const [start, setStart] = useState(day);
+  const [due, setDue] = useState(t.due && t.due >= day ? t.due : day);
+  const p = db.projects.find((x) => x.id === t.projectId)!;
+  const len = daysBetween(start, due) + 1;
+  return (
+    <Sheet title="Plan task" onClose={onClose} left="Cancel">
+      <section className="sect" style={{ background: projectColor(db.projects.map((x) => x.id), p.id) }}>
+        <div className="mono-lc">{p.name}</div>
+        <div className="h-l" style={{ marginTop: 6 }}>{t.title}</div>
+      </section>
+      <div className="pad stack" style={{ paddingTop: 20 }}>
+        <div className="row">
+          <div className="field grow"><label htmlFor="plan-start">Start</label><input id="plan-start" type="date" value={start} onChange={(e) => { setStart(e.target.value); if (e.target.value > due) setDue(e.target.value); }} /></div>
+          <div className="field grow"><label htmlFor="plan-due">Due</label><input id="plan-due" type="date" value={due} min={start} onChange={(e) => setDue(e.target.value)} /></div>
+        </div>
+        <p className="small muted">{len > 0 ? `${len} day${len === 1 ? "" : "s"}` : "Due must be on or after the start."}{t.due ? ` · deadline was ${fmt.short(t.due)}` : ""}</p>
+        <button className="btn block big" disabled={!start || !due || due < start} onClick={() => { setTaskDates(t.id, start, due); onClose(); }}>Save dates</button>
+        <Link href={`/tasks?task=${t.id}`} className="link center" style={{ display: "block" }}>Open the full task</Link>
+      </div>
+    </Sheet>
   );
 }
 
