@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { fmt, addDays } from "@/lib/dates";
 import { useHeadline } from "@/components/blocks";
-import { AttendanceRecord, Badges, PathCard, ProfileHead } from "@/components/profile";
+import { AttendanceRecord, Badges, ProfileHead, TierChart, TierRules, TiersTable } from "@/components/profile";
 import { MeetingsCard } from "@/components/home";
 import { Sheet, Tabs } from "@/components/ui";
 
@@ -39,11 +39,19 @@ function You() {
         <>
           <section className="sect"><h1 className="h-xl">{line}</h1></section>
           <div className="desk-grid two-even">
-            <div className="stack">
-              <div className="card flush"><PathCard s={my} href="/hours" /></div>
-              <MeetingsCard />
+            <div className="card flush">
+              <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
+              <TierChart s={my} />
             </div>
-            <div className="card flush"><AttendanceRecord memberId={my.member.id} /></div>
+            <div className="stack">
+              <MeetingsCard />
+              <div className="card flush"><AttendanceRecord memberId={my.member.id} /></div>
+            </div>
+          </div>
+          <h2 className="sect-title" id="tiers">Tiers</h2>
+          <div className="desk-grid two-even">
+            <div className="card flush"><TiersTable current={my.member.tier} /></div>
+            <TierRules tier={my.member.tier} />
           </div>
           <Badges s={my} />
         </>
@@ -79,7 +87,7 @@ function Settings() {
       </div>
       <div className="group-h">Support</div>
       <div className="rows">
-        <Link href="/hours"><span className="k">Tier rules</span><span className="go">→</span></Link>
+        <Link href="/you"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
       </div>
       <div className="group-h">Demo</div>

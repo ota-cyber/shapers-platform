@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { elapsed, hoursLabel } from "@/lib/dates";
 import { Avatar, Meter, handle } from "./ui";
+import { PathCard } from "./profile";
 
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/tasks", label: "Tasks" },
-  { href: "/hours", label: "Hours" },
   { href: "/team", label: "Team", admin: true },
 ];
 
@@ -62,16 +62,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className="sp-num"><span className="serif">{hoursLabel(my.thisWeek).replace(" h", "")}</span> / {my.target} h</div>
             <Meter value={my.thisWeek} max={Math.max(my.target, my.thisWeek)} mark={my.target} />
             <div className="sp-line">↑ {my.streak}-week streak{my.toKeep > 0 ? ` · ${hoursLabel(my.toKeep)} to go` : " · week made"}</div>
-            {my.nextRule && (
-              <>
-                <div className="label m" style={{ marginTop: 14 }}>Path to {my.nextRule.id}</div>
-                <ul className="sp-path">
-                  {me.tier === "GO!" && <li className={my.readiness.time ? "ok" : ""}>Month {Math.max(1, Math.min(6, Math.ceil(my.monthsInTier)))} of 6 in GO!</li>}
-                  <li className={my.readiness.hours ? "ok" : ""}>{Math.round(my.consistency * 100)}% of weeks at {my.target} h</li>
-                  <li className={my.readiness.attendance ? "ok" : ""}>{Math.round(my.attendanceRate * 100)}% of meetings attended</li>
-                </ul>
-              </>
-            )}
+            <div className="side-path"><PathCard s={my} /></div>
           </div>
         </div>
         <nav className="side-nav">

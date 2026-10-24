@@ -4,35 +4,11 @@
 
 import Link from "next/link";
 import { useApp, attendanceOf, STATUS_LABEL } from "@/lib/store";
-import { addDays, elapsed, fmt, hoursLabel, isoDate, weekStart } from "@/lib/dates";
+import { addDays, fmt, isoDate, weekStart } from "@/lib/dates";
 import { myOpenTasks, nextMeeting } from "@/lib/copy";
 import { projectColor } from "@/lib/colors";
-import { LogHoursLink } from "./blocks";
 import { Meter } from "./ui";
 import { ONBOARDING_STEPS } from "@/lib/seed";
-
-export function HoursCard() {
-  const { me, my, db, now, clockIn, clockOut } = useApp();
-  const session = db.sessions.find((s) => s.memberId === me.id);
-  return (
-    <section className="card">
-      <div className="card-h"><span className="label">Hours</span><Link href="/hours" className="arrow">History →</Link></div>
-      <div className="big"><span className="serif">{hoursLabel(my.thisWeek).replace(" h", "")}</span><span className="of">/ {my.target} h this week</span></div>
-      <Meter value={my.thisWeek} max={Math.max(my.target, my.thisWeek)} mark={my.target} />
-      <p className="small" style={{ marginTop: 10 }}>
-        {my.toKeep > 0 ? `${hoursLabel(my.toKeep)} to keep ${me.tier}.` : `Week made. ${me.tier} kept.`} {my.streak}-week streak.
-      </p>
-      <div className="card-actions">
-        {session ? (
-          <button className="btn outline" onClick={clockOut}>Clock out · {elapsed(session.start, now)}</button>
-        ) : (
-          <button className="btn" onClick={clockIn}>Clock in</button>
-        )}
-        {me.tier === "Core" && <LogHoursLink />}
-      </div>
-    </section>
-  );
-}
 
 export function MeetingsCard() {
   const { me, my, db, now, today, liveMeetingId, meetingClockIn } = useApp();

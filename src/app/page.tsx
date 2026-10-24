@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useApp } from "@/lib/store";
 import { elapsed, fmt, greeting, hoursLabel } from "@/lib/dates";
-import { AdminToday, BuddyCard, NextMeeting, TopPerformers, useOnboarding } from "@/components/blocks";
+import { AdminToday, BuddyCard, LogHoursLink, NextMeeting, TopPerformers, useOnboarding } from "@/components/blocks";
 import { ComingUp, DoMeet, OrgCards } from "@/components/home";
 import { WeekStrip } from "@/components/profile";
 import { Img, handle } from "@/components/ui";
@@ -29,6 +29,7 @@ export default function Home() {
           <button className="btn" style={{ marginTop: 34 }} onClick={clockIn}>Clock in</button>
         )}
         {!onboarding && <p className="mono-lc muted" style={{ marginTop: 12 }}>{hoursLabel(my.thisWeek)} of {my.target} h this week</p>}
+        {!onboarding && me.tier === "Core" && <div style={{ marginTop: 10 }}><LogHoursLink /></div>}
       </section>
 
       <div className="home-week"><WeekStrip memberId={me.id} /></div>
