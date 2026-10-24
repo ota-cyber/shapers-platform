@@ -381,6 +381,8 @@ img.float-img { height: auto; }
   .panel { background: var(--paper); border: 1px solid var(--line); }
   .panel.sticky { position: sticky; top: 100px; }
   .panel-d { background: var(--paper); border: 1px solid var(--line); }
+  .desk-headline { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1.12; color: var(--ink); letter-spacing: -0.01em; max-width: 760px; text-wrap: balance; margin: 0 0 30px; }
+  .page:has(> .desk-headline) { padding-top: 28px; }
   .board { grid-template-columns: repeat(3, 1fr); padding: 26px 0; align-items: start; }
   .toast { left: auto; right: 32px; bottom: 28px; width: 460px; }
   .tip { right: 32px; bottom: 90px; }

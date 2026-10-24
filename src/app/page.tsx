@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useApp } from "@/lib/store";
-import { AdminToday, EmojiLines, Glance, NextMeeting, TeamFeed, WeekInSpace } from "@/components/blocks";
+import { AdminToday, EmojiLines, Glance, NextMeeting, TeamFeed, WeekInSpace, useHeadline } from "@/components/blocks";
+
+function DeskHeadline() {
+  return <h1 className="desk-headline">{useHeadline()}</h1>;
+}
 import { PathCard, ProfileHead, WeekStrip } from "@/components/profile";
 import { TheEnd } from "@/components/ui";
 import { Wordmark } from "@/components/Shell";
@@ -26,6 +30,7 @@ export default function Home() {
 
       {/* desktop: the website's three-phone row, as three panels */}
       <div className="page hide-m">
+        <DeskHeadline />
         <div className="desk-grid three">
           <div className="panel">
             <ProfileHead s={my} />
@@ -35,7 +40,7 @@ export default function Home() {
           </div>
           <div className="panel">
             <div className="mhead" style={{ position: "static" }}><span /><Wordmark /><span /></div>
-            <Glance />
+            <Glance hideHeadline />
             <NextMeeting />
           </div>
           <div className="stack">

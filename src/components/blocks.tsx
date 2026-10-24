@@ -9,8 +9,20 @@ import type { Standing } from "@/lib/tiers";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { Avatar, Img, Sheet, Signs, first, handle } from "./ui";
 
-export function Glance() {
+/** The week's one-line statement, for both everyday and onboarding mode. */
+export function useHeadline(): string {
+  const { me, my, today, db, onboardingDone } = useApp();
+  const done = onboardingDone(me);
+  if (me.onboarding !== null && Object.values(done).some((v) => !v)) {
+    const n = Object.values(done).filter(Boolean).length;
+    return `You're ${n} of ${ONBOARDING_STEPS.length} steps into Shapers. The rest is the fun part.`;
+  }
+  return headline(my, db.sessions.some((s) => s.memberId === me.id), today);
+}
+
+export function Glance({ hideHeadline }: { hideHeadline?: boolean }) {
   const { me, my, now, today, db, clockIn, clockOut, onboardingDone } = useApp();
+  const line = useHeadline();
   const session = db.sessions.find((s) => s.memberId === me.id);
   const onboarding = me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
   const intro = (
@@ -23,12 +35,11 @@ export function Glance() {
   if (onboarding) {
     const done = onboardingDone(me);
     const left = ONBOARDING_STEPS.filter((s) => !done[s.id]);
-    const n = ONBOARDING_STEPS.length - left.length;
     const buddy = db.members.find((m) => m.id === me.buddyId);
     return (
       <section className="glance">
         {intro}
-        <h1 className="h-xl">You&apos;re {n} of {ONBOARDING_STEPS.length} steps into Shapers. The rest is the fun part.</h1>
+        {!hideHeadline && <h1 className="h-xl">{line}</h1>}
         <div className="orb"><Img name="hands" /></div>
         <div className="dodont">
           <div><div className="lbl">Do</div><ul>{left.slice(0, 3).map((s) => <li key={s.id}>{s.title.replace(/^(Read|Learn|Get|Pick|Clock|Finish|Attend|Subscribe to) /, "").replace(/^./, (c) => c.toUpperCase())}</li>)}</ul></div>
@@ -44,7 +55,7 @@ export function Glance() {
   return (
     <section className="glance">
       {intro}
-      <h1 className="h-xl">{headline(my, !!session, today)}</h1>
+      {!hideHeadline && <h1 className="h-xl">{line}</h1>}
       <div className="orb"><Img name={session ? "stopwatch" : "hourglass"} /></div>
       <div className="dodont">
         <div><div className="lbl">Do</div><ul>{dd.do.map((x) => <li key={x}>{x}</li>)}</ul></div>
