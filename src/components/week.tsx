@@ -187,7 +187,7 @@ export function WeekTimeline({ memberId }: { memberId?: string }) {
                   <button key={m.id} className={`wk-meet ${live ? "live" : ""} ${past ? "past" : ""}`} onClick={() => (readonly ? router.push(`/meetings/${m.id}`) : setOpen(m.id))}>
                     <span className="t">{fmt.time(m.start)}</span>
                     <span className="n">{m.series}</span>
-                    <span className="s">{live ? (state === "present" || state === "remote" ? "You're in" : "Clock in now") : state ? state : past ? "" : ""}</span>
+                    <span className="s">{live ? (state === "present" || state === "remote" ? "You're in" : "Check in now") : state ? state : past ? "" : ""}</span>
                   </button>
                 );
               })}
@@ -256,7 +256,7 @@ export function MeetingSheet({ id, onClose }: { id: string; onClose: () => void 
             <p className="small">{state ? `Recorded: ${state}.` : "Nothing recorded for you yet."}</p>
           ) : (
             <>
-              <p className="small">Clock-in opens when the meeting starts.</p>
+              <p className="small">Check-in opens when the meeting starts.</p>
               {absence || msg ? (
                 <p className="small" style={{ marginTop: 10 }}>{msg ?? (absence!.excused ? "Absence announced in time. It counts as excused." : "Absence announced late. It will count as unexcused.")}</p>
               ) : (

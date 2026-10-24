@@ -8,19 +8,20 @@ import type { OnboardingStepId } from "@/lib/types";
 import { TierRules, TiersTable } from "@/components/profile";
 import { Avatar, Img, Modal, Signs, first, handle } from "@/components/ui";
 
-const SCREENS = ["welcome", "rules", "tiers", "tools", "buddy", "project", "clock"] as const;
-type Screen = (typeof SCREENS)[number];
+import { SCREENS, firstOpenScreen, type Screen } from "@/lib/onboarding";
 
 export default function Onboarding() {
   const router = useRouter();
   const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn } = useApp();
-  const [i, setI] = useState(0);
+  const done = onboardingDone(me);
+  // Existing members (onboarding null) get a read-only refresher: nothing is marked.
+  const refresher = me.onboarding === null;
+  const [i, setI] = useState(() => (refresher ? 0 : firstOpenScreen(done)));
   const [picked, setPicked] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
-  const done = onboardingDone(me);
   const screen: Screen = SCREENS[i];
   const next = () => (i < SCREENS.length - 1 ? setI(i + 1) : setFinished(true));
-  const mark = (...ids: OnboardingStepId[]) => ids.forEach((id) => completeStep(me.id, id));
+  const mark = (...ids: OnboardingStepId[]) => !refresher && ids.forEach((id) => completeStep(me.id, id));
   const buddy = member(me.buddyId);
 
   const top = (
@@ -45,6 +46,13 @@ export default function Onboarding() {
     </div>
   );
 
+  if (finished && refresher)
+    return (
+      <div className="page narrow">
+        <Modal title="That's the tour." body="Nothing changed on your profile. Come back any time from You → Settings." action="Go home" onClose={() => router.push("/")} />
+      </div>
+    );
+
   if (finished)
     return (
       <div className="page narrow">
@@ -66,7 +74,7 @@ export default function Onboarding() {
       <Frame label="Meeting one" title="The rules everyone keeps." img="book" cta="I've read them" onCta={() => { mark("values"); next(); }}>
         <ul className="compat" style={{ maxWidth: 400, margin: "0 auto" }}>
           <li><span className="face">⊙</span><div><div className="t">Hours are office hours</div><div className="s">Clock in at Impact Hub. One tap, one-hour blocks.</div></div></li>
-          <li><span className="face">☽</span><div><div className="t">Meetings are separate</div><div className="s">They never count as hours. Clock in when one starts.</div></div></li>
+          <li><span className="face">☽</span><div><div className="t">Meetings are separate</div><div className="s">They never count toward your hours. When a meeting starts, open it in your calendar and tap &quot;I&apos;m here&quot; (or &quot;Remote&quot;) so your attendance is recorded.</div></div></li>
           <li><span className="face">↑</span><div><div className="t">Absences are announced</div><div className="s">On Slack: 72 h before Community, 24 h before a project meeting.</div></div></li>
           <li><span className="face">॥</span><div><div className="t">Pauses are allowed</div><div className="s">Pause weeks never count against you or your streak.</div></div></li>
         </ul>
@@ -158,7 +166,15 @@ export default function Onboarding() {
     );
 
   return (
-    <Frame label="Your first hour" title="Clock in. Every hour counts toward your week." cta="Clock in now" onCta={() => { clockIn(null); setFinished(true); }}>
+    <Frame
+      label="Your first hour"
+      title="Clock in. Every hour counts toward your week."
+      cta={refresher || done["first-hour"] || db.sessions.some((x) => x.memberId === me.id) ? "Finish" : "Clock in now"}
+      onCta={() => {
+        if (!refresher && !done["first-hour"] && !db.sessions.some((x) => x.memberId === me.id)) clockIn(null);
+        setFinished(true);
+      }}
+    >
       <div style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
         {[
           ["now", "Your week at a glance", `${standingOf(me.id).toKeep ? `${standingOf(me.id).toKeep} h to keep GO! this week.` : "Your week is made."}`],

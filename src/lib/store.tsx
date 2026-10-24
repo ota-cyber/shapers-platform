@@ -10,7 +10,7 @@ import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 
-const KEY = "shapers-ui-v4";
+const KEY = "shapers-ui-v5";
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -288,7 +288,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeStep: (memberId, step, v = true) =>
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
-          m.onboarding = { ...(m.onboarding ?? {}), [step]: v };
+          if (m.onboarding === null) return; // existing members aren't onboarding; never switch them into it
+          m.onboarding = { ...m.onboarding, [step]: v };
           if (v) m.onboardingProgressAt = today;
         }),
       // Records interest only. Members can't pick up tasks themselves; the project lead assigns the first one.

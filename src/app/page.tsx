@@ -8,6 +8,7 @@ import { AdminToday, BuddyCard, BuddyNudges, LogHoursLink, SetupCard, TopPerform
 import { OrgCards } from "@/components/home";
 import { ClockInSheet, WeekPlanner } from "@/components/week";
 import { handle } from "@/components/ui";
+import { flowDone } from "@/lib/onboarding";
 
 export default function Home() {
   const { me, my, now, db, clockOut, setupDone, stalledDays, onboardingDone } = useApp();
@@ -26,7 +27,7 @@ export default function Home() {
         </h1>
         <WeekPlanner onboarding={onboarding}>
           <div className="clock">
-            {onboarding ? (
+            {onboarding && !flowDone(onboardingDone(me)) ? (
               <Link href="/onboarding" className="btn big">Continue onboarding</Link>
             ) : session ? (
               <>
