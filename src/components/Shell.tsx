@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { elapsed } from "@/lib/dates";
+import { ProfileHead } from "./profile";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -28,7 +29,7 @@ export function Wordmark() {
 /** Side menu on desktop; on mobile the same menu opens from the hamburger. */
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { me, prefs, setPrefs, db, stillWorkingDue, stillWorking, clockOut, now } = useApp();
+  const { me, my, prefs, setPrefs, db, stillWorkingDue, stillWorking, clockOut, now } = useApp();
   const [open, setOpen] = useState(false);
   const session = db.sessions.find((s) => s.memberId === me.id);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
@@ -50,6 +51,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/" onClick={close}><Wordmark /></Link>
           <button className="side-close" onClick={close} aria-label="Close menu">✕</button>
         </div>
+        <Link href="/you" onClick={close} className="side-me" aria-label="Your profile">
+          <ProfileHead s={my} you />
+        </Link>
         <nav className="side-nav">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} onClick={close} aria-current={active(n.href) ? "page" : undefined}>{n.label}</Link>
