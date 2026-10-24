@@ -46,8 +46,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {open && <div className="scrim" onClick={close} aria-hidden />}
       <aside className={`sidebar ${open ? "open" : ""}`} aria-label="Menu">
-        <div className="side-top">
-          <Link href="/" onClick={close}><Wordmark /></Link>
+        <div className="side-top hide-d">
           <button className="side-close" onClick={close} aria-label="Close menu">✕</button>
         </div>
         <div className="side-me">
