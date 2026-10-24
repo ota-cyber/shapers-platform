@@ -29,7 +29,6 @@ export default function MemberPage() {
   const allDone = Object.values(done).every(Boolean);
   const stalled = stalledDays(m);
   const sc = score(db, s, today);
-  const tasksDone = db.tasks.filter((t) => t.assigneeId === m.id && t.status === "done").sort((a, b) => (b.doneAt ?? "").localeCompare(a.doneAt ?? ""));
   const open = myOpenTasks(db, m.id);
 
   return (
@@ -84,7 +83,7 @@ export default function MemberPage() {
 
           <div style={{ marginTop: 14 }}><ProfileGrid s={s} /></div>
 
-          <h2 className="sect-title">Tasks</h2>
+          <h2 className="sect-title">Open tasks</h2>
           <div className="desk-grid two-even">
             <div className="card flush">
               <div className="group-h">Open · {open.length}</div>
@@ -96,15 +95,6 @@ export default function MemberPage() {
                   </Link>
                 ))}
                 {!open.length && <div><span className="k muted">Nothing open</span></div>}
-              </div>
-            </div>
-            <div className="card flush">
-              <div className="group-h">Finished · {tasksDone.length}</div>
-              <div className="rows">
-                {tasksDone.map((t) => (
-                  <div key={t.id}><span className="k">{t.title}</span><span className="v">{t.size ?? "M"} · {t.doneAt ? fmt.short(t.doneAt) : ""}</span></div>
-                ))}
-                {!tasksDone.length && <div><span className="k muted">None yet</span></div>}
               </div>
             </div>
           </div>

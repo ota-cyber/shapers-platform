@@ -7,6 +7,8 @@ import { addDays, fmt, hoursLabel, weekStart } from "@/lib/dates";
 import { TIERS, attendanceFor, badges, type Standing } from "@/lib/tiers";
 import type { AttendanceState } from "@/lib/types";
 import { MeetingsCard } from "./home";
+import { projectColor } from "@/lib/colors";
+import { TASK_POINTS } from "@/lib/score";
 import { Avatar, Img, Signs, StatusMark, handle, type Mark } from "./ui";
 
 export function ProfileHead({ s, you }: { s: Standing; you?: boolean }) {
@@ -303,6 +305,32 @@ export function Badges({ s, compact }: { s: Standing; compact?: boolean }) {
   );
 }
 
+/** Finished tasks, newest first, with size points. */
+export function CompletedTasks({ memberId }: { memberId: string }) {
+  const { db } = useApp();
+  const done = db.tasks.filter((t) => t.assigneeId === memberId && t.status === "done").sort((a, b) => (b.doneAt ?? "").localeCompare(a.doneAt ?? ""));
+  const ids = db.projects.map((p) => p.id);
+  const points = done.reduce((sum, t) => sum + TASK_POINTS[t.size ?? "M"], 0);
+  return (
+    <section className="card">
+      <div className="card-h"><span className="label">Completed tasks</span><span className="mono-lc muted">{points} pt</span></div>
+      <div className="big"><span className="serif">{done.length}</span><span className="of">finished</span></div>
+      <ul className="card-list">
+        {done.slice(0, 6).map((t) => (
+          <li key={t.id}>
+            <Link href={`/tasks?task=${t.id}`}>
+              <span className="row" style={{ gap: 8, minWidth: 0 }}><span className="kb-chip" style={{ background: projectColor(ids, t.projectId) }} /><span className="ellip">{t.title}</span></span>
+              <span className="mono-lc muted">{t.size ?? "M"} · {t.doneAt ? fmt.short(t.doneAt) : ""}</span>
+            </Link>
+          </li>
+        ))}
+        {!done.length && <li className="muted small" style={{ padding: "9px 0" }}>Nothing finished yet.</li>}
+      </ul>
+      {done.length > 6 && <p className="small muted" style={{ marginTop: 8 }}>And {done.length - 6} more.</p>}
+    </section>
+  );
+}
+
 /**
  * The profile body, shared by You and Team → member.
  * Left: tier rules, attendance, hours week by week. Right: badges, meeting record.
@@ -313,6 +341,7 @@ export function ProfileGrid({ s }: { s: Standing }) {
       <div className="stack">
         <TierRules tier={s.member.tier} />
         <MeetingsCard memberId={s.member.id} />
+        <CompletedTasks memberId={s.member.id} />
         <div className="card flush">
           <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
           <TierChart s={s} />
