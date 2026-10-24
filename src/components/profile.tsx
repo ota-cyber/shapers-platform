@@ -232,7 +232,7 @@ export function TierRules({ tier }: { tier: string }) {
 
 const STATE_LABEL: Record<AttendanceState, string> = { present: "Present", remote: "Remote", excused: "Missed · excused", unexcused: "Missed · unexcused" };
 
-export function AttendanceRecord({ memberId }: { memberId: string }) {
+export function AttendanceRecord({ memberId, their }: { memberId: string; their?: boolean }) {
   const { db } = useApp();
   const rows = attendanceFor(db, memberId);
   const by = (st: AttendanceState) => rows.filter((r) => r.state === st);
@@ -243,7 +243,7 @@ export function AttendanceRecord({ memberId }: { memberId: string }) {
   };
   return (
     <div className="stack" style={{ padding: "22px var(--gutter)" }}>
-      <div className="label center">Your record, all six series</div>
+      <div className="label center">{their ? "Their" : "Your"} record, all six series</div>
       <p className="small center" style={{ marginTop: 4 }}>Meetings come from the Google Calendar. Meetings never count as hours.</p>
       <div className="box">
         <div className="bh">Present · {by("present").length}</div>
@@ -306,7 +306,7 @@ export function Badges({ s, compact }: { s: Standing; compact?: boolean }) {
 }
 
 /** Finished tasks, newest first, with size points. */
-export function CompletedTasks({ memberId }: { memberId: string }) {
+export function CompletedTasks({ memberId, limit = 6 }: { memberId: string; limit?: number }) {
   const { db } = useApp();
   const done = db.tasks.filter((t) => t.assigneeId === memberId && t.status === "done").sort((a, b) => (b.doneAt ?? "").localeCompare(a.doneAt ?? ""));
   const ids = db.projects.map((p) => p.id);
@@ -316,7 +316,7 @@ export function CompletedTasks({ memberId }: { memberId: string }) {
       <div className="card-h"><span className="label">Completed tasks</span><span className="mono-lc muted">{points} pt</span></div>
       <div className="big"><span className="serif">{done.length}</span><span className="of">finished</span></div>
       <ul className="card-list">
-        {done.slice(0, 6).map((t) => (
+        {done.slice(0, limit).map((t) => (
           <li key={t.id}>
             <Link href={`/tasks?task=${t.id}`}>
               <span className="row" style={{ gap: 8, minWidth: 0 }}><span className="kb-chip" style={{ background: projectColor(ids, t.projectId) }} /><span className="ellip">{t.title}</span></span>
@@ -326,7 +326,7 @@ export function CompletedTasks({ memberId }: { memberId: string }) {
         ))}
         {!done.length && <li className="muted small" style={{ padding: "9px 0" }}>Nothing finished yet.</li>}
       </ul>
-      {done.length > 6 && <p className="small muted" style={{ marginTop: 8 }}>And {done.length - 6} more.</p>}
+      {done.length > limit && <p className="small muted" style={{ marginTop: 8 }}>And {done.length - limit} more.</p>}
     </section>
   );
 }

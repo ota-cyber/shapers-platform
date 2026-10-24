@@ -9,9 +9,10 @@ import { myOpenTasks } from "@/lib/copy";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import { score, TASK_POINTS } from "@/lib/score";
 import type { TierId } from "@/lib/types";
-import { PathCard, ProfileGrid } from "@/components/profile";
+import { AttendanceRecord, CompletedTasks, TierChart } from "@/components/profile";
+import { MeetingsCard } from "@/components/home";
 import { WeekTimeline } from "@/components/week";
-import { Avatar, Signs, first, handle } from "@/components/ui";
+import { Avatar, Meter, Signs, first, handle } from "@/components/ui";
 
 /** Team → a member: their week first, then everything their profile shows. */
 export default function MemberPage() {
@@ -67,10 +68,19 @@ export default function MemberPage() {
 
           <div className="pad"><WeekTimeline memberId={m.id} /></div>
 
-          <h2 className="sect-title">Performance</h2>
-          <div className="desk-grid two-even">
-            <div className="card flush"><PathCard s={s} /></div>
-            <div className="card">
+          {/* top row: tasks, attendance, hours, score */}
+          <div className="cards four">
+            <CompletedTasks memberId={m.id} limit={3} />
+            <MeetingsCard memberId={m.id} />
+            <section className="card">
+              <div className="card-h"><span className="label">Hours</span></div>
+              <div className="big"><span className="serif">{hoursLabel(s.thisWeek).replace(" h", "")}</span><span className="of">/ {s.target} h this week</span></div>
+              <Meter value={s.thisWeek} max={Math.max(s.target, s.thisWeek)} mark={s.target} />
+              <p className="small" style={{ marginTop: 10 }}>
+                {s.toKeep > 0 ? `${hoursLabel(s.toKeep)} short of their ${m.tier} week.` : `Week made. ${m.tier} kept.`} {s.streak}-week streak · avg {hoursLabel(s.avg4)}.
+              </p>
+            </section>
+            <section className="card">
               <div className="card-h"><span className="label">Score · last 6 weeks</span></div>
               <div className="big"><span className="serif">{sc.total}</span><span className="of">points</span></div>
               <ul className="card-list">
@@ -78,10 +88,21 @@ export default function MemberPage() {
                 <li className="score-row"><span>{sc.weeksMet} of {sc.weeksCounted} weeks at {s.target} h</span><span className="mono-lc">{sc.hoursPoints} pt</span></li>
               </ul>
               <p className="small muted" style={{ marginTop: 10 }}>Small {TASK_POINTS.S} · Medium {TASK_POINTS.M} · Large {TASK_POINTS.L} points per finished task, plus 5 per week at commitment.</p>
-            </div>
+            </section>
           </div>
 
-          <div style={{ marginTop: 14 }}><ProfileGrid s={s} /></div>
+          {/* below: hours week by week and meeting stats, as on the profile */}
+          <div className="desk-grid two-even profile-grid" style={{ marginTop: 14 }}>
+            <div className="stack">
+              <div className="card flush">
+                <div className="card-h pad" style={{ paddingTop: 18 }}><span className="label">Hours, week by week</span></div>
+                <TierChart s={s} />
+              </div>
+            </div>
+            <div className="stack">
+              <div className="card flush"><AttendanceRecord memberId={m.id} their /></div>
+            </div>
+          </div>
 
           <h2 className="sect-title">Open tasks</h2>
           <div className="desk-grid two-even">
