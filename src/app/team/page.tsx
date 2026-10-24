@@ -131,7 +131,7 @@ function People({ view, compact }: { view: View; compact?: boolean }) {
                 <div><span className="nm">{s.member.name}</span><span className="hd">{handle(s.member)}</span></div>
                 <div className="signs s"><span>⊙ {n}/{ONBOARDING_STEPS.length} steps</span><span>☽ buddy {buddy ? first(buddy) : "—"}</span><span>↑ day {Math.max(1, Math.round((Date.now() - new Date(s.member.joined).getTime()) / 864e5))}</span></div>
                 <div style={{ marginTop: 8 }}><Meter value={n} max={ONBOARDING_STEPS.length} /></div>
-                {s.member.graduation ? <div className="small" style={{ marginTop: 6 }}>Buddy proposed ending onboarding. Waiting for an admin.</div>
+                {s.member.graduation ? <div className="small" style={{ marginTop: 6 }}>Buddy proposed graduating. Waiting for an admin.</div>
                   : stalledDays(s.member) !== null && <div className="small" style={{ marginTop: 6 }}>No progress in {stalledDays(s.member)} days. Their buddy has the nudge.</div>}
               </div>
               <span className="go">→</span>
@@ -332,7 +332,7 @@ function Approvals() {
   const grads = db.members.filter((m) => m.graduation);
   return (
     <>
-      <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, pause requests, and buddies ending onboarding. Everything else is trusted by default.</p></div>
+      <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, pause requests, and buddies graduating new members. Everything else is trusted by default.</p></div>
       <div className="group-h">Hours back-filled</div>
       <div className="rows">
         {back.map((b) => (

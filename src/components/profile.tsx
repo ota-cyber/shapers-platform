@@ -117,7 +117,6 @@ export function PathCard({ s, href, hidePace }: { s: Standing; href?: string; hi
           </li>
         )}
       </ul>
-      <p className="small muted" style={{ marginTop: 12 }}>Leadership decides promotions. This shows readiness, not a promise.</p>
       {href && <Link href={href} className="arrow" style={{ marginTop: 12 }}>Details →</Link>}
     </section>
   );

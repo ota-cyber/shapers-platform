@@ -223,10 +223,10 @@ function WhatsLeft({ onReplay }: { onReplay: () => void }) {
         <h1 className="h-l" style={{ marginTop: 10 }}>{left ? `${left} thing${left === 1 ? "" : "s"} left, all done by doing.` : "Everything's done."}</h1>
         <p className="small" style={{ marginTop: 10 }}>
           {me.graduation
-            ? `${member(me.graduation.proposedBy)?.name.split(" ")[0] ?? "Your buddy"} proposed ending your onboarding. An admin confirms, then home becomes your everyday screen.`
+            ? `${member(me.graduation.proposedBy)?.name.split(" ")[0] ?? "Your buddy"} proposed graduating you. An admin confirms, then home becomes your everyday screen.`
             : left
-              ? `When these are done, ${buddy ? buddy.name.split(" ")[0] : "your buddy"} can end your onboarding and an admin confirms.`
-              : `${buddy ? buddy.name.split(" ")[0] : "Your buddy"} can now end your onboarding; an admin confirms.`}
+              ? `When these are done, ${buddy ? buddy.name.split(" ")[0] : "your buddy"} can graduate you and an admin confirms.`
+              : `${buddy ? buddy.name.split(" ")[0] : "Your buddy"} can now graduate you; an admin confirms.`}
         </p>
       </div>
       <div className="rows">

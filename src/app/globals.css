@@ -628,3 +628,6 @@ a.lb-row:hover { background: #f1f1f1; }
 }
 @media (min-width: 1000px) { .cards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 640px) and (max-width: 999px) { .cards.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* sidebar path: no status column, text lines up with the heading */
+.side-path .compat .face { display: none; }
+.side-path .compat li { padding-left: 0; }

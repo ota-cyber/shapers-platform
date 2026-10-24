@@ -150,7 +150,7 @@ export default function MemberPage() {
                 {buddy && <p className="small muted" style={{ marginTop: 10 }}>Buddy: {buddy.name}</p>}
                 {m.graduation ? (
                   <div style={{ marginTop: 16 }}>
-                    <p className="small">{member(m.graduation.proposedBy)?.name ?? "The buddy"} proposed ending onboarding on {fmt.short(m.graduation.at)}.{me.admin ? "" : " An admin confirms."}</p>
+                    <p className="small">{member(m.graduation.proposedBy)?.name ?? "The buddy"} proposed graduating {first(m)} on {fmt.short(m.graduation.at)}.{me.admin ? "" : " An admin confirms."}</p>
                     {me.admin && (
                       <div className="row" style={{ marginTop: 10, gap: 8 }}>
                         <button className="btn-s on" onClick={() => resolveGraduation(m.id, true)}>Confirm</button>
@@ -160,7 +160,7 @@ export default function MemberPage() {
                   </div>
                 ) : isBuddy && (
                   <div style={{ marginTop: 16 }}>
-                    <button className="btn-s on" disabled={!allDone} onClick={() => proposeGraduation(m.id)}>End onboarding</button>
+                    <button className="btn-s on" disabled={!allDone} onClick={() => proposeGraduation(m.id)}>Graduate</button>
                     <p className="small muted" style={{ marginTop: 8 }}>
                       {allDone ? `When ${first(m)} has found their place. An admin confirms, then home becomes their everyday screen.` : "Every step has to be done first."}
                     </p>
