@@ -27,16 +27,15 @@ export default function Home() {
         </h1>
         <WeekPlanner onboarding={onboarding}>
           <div className="clock">
-            {onboarding && !flowDone(onboardingDone(me)) ? (
-              <Link href="/onboarding" className="btn big">Continue onboarding</Link>
-            ) : session ? (
+            {onboarding && <Link href="/onboarding" className="btn big" style={{ marginBottom: flowDone(onboardingDone(me)) ? 12 : 0 }}>Continue onboarding</Link>}
+            {onboarding && !flowDone(onboardingDone(me)) ? null : session ? (
               <>
                 <button className="btn big outline" onClick={clockOut}>Clock out · {elapsed(session.start, now)}</button>
                 <p className="mono-lc muted" style={{ marginTop: 10 }}>On the clock for {sessionTask ? sessionTask.title : "general office work"}</p>
               </>
             ) : (
               <>
-                <button className="btn big" onClick={() => setPicking(true)}>Clock in</button>
+                <button className={`btn big ${onboarding ? "outline" : ""}`} onClick={() => setPicking(true)}>Clock in</button>
                 <p className="mono-lc muted" style={{ marginTop: 10 }}>{hoursLabel(my.thisWeek)} of {my.target} h this week</p>
               </>
             )}

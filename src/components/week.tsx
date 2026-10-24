@@ -64,8 +64,8 @@ export function WeekPlanner({ onboarding, children }: { onboarding: boolean; chi
 function DoMeet({ onboarding }: { onboarding: boolean }) {
   const { me, db, now, today, onboardingDone } = useApp();
   const done = onboardingDone(me);
-  const tasks = onboarding ? [] : myOpenTasks(db, me.id).slice(0, 3);
   const steps = onboarding ? ONBOARDING_STEPS.filter((s) => !done[s.id]).slice(0, 3) : [];
+  const tasks = myOpenTasks(db, me.id).slice(0, 3 - steps.length);
   const weekEnd = addDays(weekStart(today), 6);
   const meets = db.meetings
     .filter((m) => m.memberIds.includes(me.id) && new Date(m.end) > now && isoDate(new Date(m.start)) <= weekEnd)

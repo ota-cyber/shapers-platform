@@ -8,7 +8,10 @@ import type { OnboardingStepId } from "@/lib/types";
 import { TierRules, TiersTable } from "@/components/profile";
 import { Avatar, Img, Modal, Signs, first, handle } from "@/components/ui";
 
-import { SCREENS, firstOpenScreen, type Screen } from "@/lib/onboarding";
+import Link from "next/link";
+import { SCREENS, firstOpenScreen, flowDone, type Screen } from "@/lib/onboarding";
+import { nextMeeting } from "@/lib/copy";
+import { fmt } from "@/lib/dates";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -19,6 +22,7 @@ export default function Onboarding() {
   const [i, setI] = useState(() => (refresher ? 0 : firstOpenScreen(done)));
   const [picked, setPicked] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
+  const [replay, setReplay] = useState(false);
   const screen: Screen = SCREENS[i];
   const next = () => (i < SCREENS.length - 1 ? setI(i + 1) : setFinished(true));
   const mark = (...ids: OnboardingStepId[]) => !refresher && ids.forEach((id) => completeStep(me.id, id));
@@ -45,6 +49,9 @@ export default function Onboarding() {
       </div>
     </div>
   );
+
+  // Screens done: "Continue onboarding" shows what's left instead of replaying them.
+  if (!refresher && flowDone(done) && !replay) return <WhatsLeft onReplay={() => { setI(0); setReplay(true); }} />;
 
   if (finished && refresher)
     return (
@@ -191,5 +198,54 @@ export default function Onboarding() {
         ))}
       </div>
     </Frame>
+  );
+}
+
+/** After the screens: the steps that only real activity completes, and who ends onboarding. */
+function WhatsLeft({ onReplay }: { onReplay: () => void }) {
+  const { me, db, now, member, onboardingDone } = useApp();
+  const done = onboardingDone(me);
+  const buddy = member(me.buddyId);
+  const meet = nextMeeting(db, me.id, now);
+  const wanted = (me.wantsProjects ?? []).map((id) => db.projects.find((p) => p.id === id)).filter(Boolean);
+  const leads = wanted.map((p) => member(p!.leadId)?.name.split(" ")[0]).filter(Boolean);
+  const items: { id: OnboardingStepId; title: string; line: string; href?: string }[] = [
+    { id: "first-hour", title: "Clock your first hour", line: "Use Clock in on Home when you're at the Hub.", href: "/" },
+    { id: "project", title: "Get your first task", line: wanted.length ? `You picked ${wanted.map((p) => p!.name).join(", ")}. ${leads.join(" or ")} will assign you a task.` : "Your project lead assigns it. Ask your buddy who to talk to." },
+    { id: "first-task", title: "Finish your first task", line: "Anything assigned to you. Small is fine.", href: "/tasks" },
+    { id: "first-meeting", title: "Attend your first meeting", line: meet ? `Next: ${meet.series}, ${fmt.weekday(meet.start)} ${fmt.short(meet.start)} at ${fmt.time(meet.start)}. Check in when it starts.` : "Check in when your next meeting starts." },
+  ];
+  const left = items.filter((x) => !done[x.id]).length;
+  return (
+    <div className="page narrow">
+      <div className="glance" style={{ paddingTop: 40 }}>
+        <div className="mono-lc">Onboarding</div>
+        <h1 className="h-l" style={{ marginTop: 10 }}>{left ? `${left} thing${left === 1 ? "" : "s"} left, all done by doing.` : "Everything's done."}</h1>
+        <p className="small" style={{ marginTop: 10 }}>
+          {me.graduation
+            ? `${member(me.graduation.proposedBy)?.name.split(" ")[0] ?? "Your buddy"} proposed ending your onboarding. An admin confirms, then home becomes your everyday screen.`
+            : left
+              ? `When these are done, ${buddy ? buddy.name.split(" ")[0] : "your buddy"} can end your onboarding and an admin confirms.`
+              : `${buddy ? buddy.name.split(" ")[0] : "Your buddy"} can now end your onboarding; an admin confirms.`}
+        </p>
+      </div>
+      <div className="rows">
+        {items.map((x) => {
+          const body = (
+            <>
+              <span className="k" style={{ textDecoration: done[x.id] ? "line-through" : undefined, color: done[x.id] ? "var(--muted)" : undefined }}>
+                {x.title}
+                {!done[x.id] && <><br /><span className="muted" style={{ textTransform: "none" }}>{x.line}</span></>}
+              </span>
+              <span className="v">{done[x.id] ? "Done" : ""}</span>
+            </>
+          );
+          return x.href && !done[x.id] ? <Link key={x.id} href={x.href}>{body}</Link> : <div key={x.id}>{body}</div>;
+        })}
+      </div>
+      <div className="center" style={{ padding: "26px 0 40px" }}>
+        <button className="link" onClick={onReplay}>Go through the screens again</button>
+      </div>
+    </div>
   );
 }

@@ -620,3 +620,9 @@ a.lb-row:hover { background: #f1f1f1; }
 .badge-s { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
 .badge-s img { width: 52px; height: 52px; object-fit: contain; mix-blend-mode: multiply; }
 .badge-s span { font-family: var(--serif); font-size: 15px; color: var(--ink); line-height: 1.15; }
+/* profile: both columns end on the same line; the last box in each column fills the rest */
+@media (min-width: 1000px) {
+  .profile-grid { align-items: stretch; }
+  .profile-grid > .stack { display: flex; flex-direction: column; }
+  .profile-grid > .stack > :last-child { flex: 1; }
+}

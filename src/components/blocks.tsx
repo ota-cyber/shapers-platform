@@ -22,8 +22,9 @@ export function useHeadline(): string {
 
 /** True while a member still has onboarding steps left. */
 export function useOnboarding(): boolean {
-  const { me, onboardingDone } = useApp();
-  return me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
+  const { me } = useApp();
+  // Onboarding lasts until the buddy proposes the end and an admin confirms (all 11 steps first).
+  return me.onboarding !== null;
 }
 
 /** Existing members on their first days in the app: three steps, then the normal home. */

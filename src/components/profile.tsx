@@ -337,7 +337,7 @@ export function CompletedTasks({ memberId }: { memberId: string }) {
  */
 export function ProfileGrid({ s }: { s: Standing }) {
   return (
-    <div className="desk-grid two-even">
+    <div className="desk-grid two-even profile-grid">
       <div className="stack">
         <TierRules tier={s.member.tier} />
         <MeetingsCard memberId={s.member.id} />
