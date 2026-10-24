@@ -57,6 +57,12 @@ Admin role only, never granted by tier: the Team section (everyone's stats, movi
 
 When a new member picks projects during onboarding, the app only records their choice (`Member.wantsProjects`). It does not assign them a task. The project lead (or anyone with full task access) assigns the first task.
 
+## Onboarding graduation and roster import
+
+- **Ending onboarding:** only the member's **buddy** can propose it, and only once every onboarding step is done. Only an **admin** can confirm it (or send it back with "not yet"). Decided by Jure, 2026-10-24.
+- **Importing the roster** (existing members, deploy day) is admin-only, like adding a member.
+- **Setup steps** (check tier, pick projects) are written by the member themselves. A member who thinks their tier is wrong is told to ask an admin; they cannot change it.
+
 ## Decided later
 
 - 2026-10-24: GO! and Impact members **can** create tasks for themselves (Jure).

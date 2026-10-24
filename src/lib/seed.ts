@@ -4,7 +4,7 @@
 
 import sandbox from "@/data/sandbox.json";
 import { addDays } from "./dates";
-import type { Db, Member, OnboardingStepId, Project, Series, Task, TaskStatus, Priority } from "./types";
+import type { Db, Member, OnboardingStepId, Project, Series, SetupStepId, Task, TaskStatus, Priority } from "./types";
 
 const AVATARS = ["bust", "stone", "apple", "moon", "dove", "hands", "compass", "sprout", "book", "key"];
 
@@ -26,7 +26,7 @@ const BUDDY: Record<string, string> = {
   "filip.rozman": "ana.kovac", "lea.zorman": "rok.golob", "tim.vrhovnik": "eva.vidmar",
 };
 
-const done = (ids: OnboardingStepId[]) => Object.fromEntries(ids.map((i) => [i, true]));
+const done = <K extends string>(ids: K[]) => Object.fromEntries(ids.map((i) => [i, true])) as Partial<Record<K, boolean>>;
 
 const NEW_MEMBERS: Member[] = [
   {
@@ -34,14 +34,27 @@ const NEW_MEMBERS: Member[] = [
     admin: false, series: ["Community", "Shapers Tech"], joined: "2026-10-12", tierSince: "2026-10-12",
     buddyId: "rok.golob", avatar: "sprout", seeded: true,
     onboarding: done(["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"]),
+    onboardingProgressAt: "2026-10-14", // stalled: her buddy Rok gets the nudge
   },
   {
     id: "tim.vrhovnik", name: "Tim Vrhovnik", email: "tim.vrhovnik@sandbox.example", tier: "GO!", weeklyHours: 4,
     admin: false, series: ["Community", "Grants"], joined: "2026-10-19", tierSince: "2026-10-19",
     buddyId: "eva.vidmar", avatar: "key", seeded: true,
     onboarding: done(["values", "tiers"]),
+    onboardingProgressAt: "2026-10-21",
+  },
+  {
+    id: "mia.kranjc", name: "Mia Kranjc", email: "mia.kranjc@sandbox.example", tier: "GO!", weeklyHours: 4,
+    admin: false, series: ["Community", "Shape Talks"], joined: "2026-09-28", tierSince: "2026-09-28",
+    buddyId: "rok.golob", avatar: "dove", seeded: true,
+    // every step done: her buddy Rok can propose ending onboarding
+    onboarding: done(["values", "tiers", "contract", "email", "slack", "calendar", "buddy", "project", "first-hour", "first-task", "first-meeting"]),
+    onboardingProgressAt: "2026-10-22",
   },
 ];
+
+// Members who joined before the platform and are still on their three setup steps.
+const SETUP: Record<string, SetupStepId[]> = { "zala.turk": ["confirm-tier"], "nejc.kralj": [] };
 
 const PROJECTS: Project[] = [
   { id: "summer-school", name: "Summer School 2027", series: "Summer School", leadId: "luka.novak", description: "Programme, venue and mentors for next summer's school." },
@@ -105,6 +118,7 @@ export function seedDb(): Db {
       buddyId: BUDDY[m.id] ?? null,
       avatar: AVATARS[i % AVATARS.length],
       onboarding: null,
+      ...(SETUP[m.id] ? { setup: done(SETUP[m.id]) } : {}),
     }),
   );
   const members = [...roster, ...NEW_MEMBERS];
@@ -145,6 +159,15 @@ export function seedDb(): Db {
     absences: [],
   };
 }
+
+/** No onboarding progress for this many days nudges the buddy. */
+export const STALL_DAYS = 7;
+
+export const SETUP_STEPS: { id: SetupStepId; title: string; line: string; auto?: boolean }[] = [
+  { id: "confirm-tier", title: "Check your tier and hours", line: "What we have on file for you." },
+  { id: "projects", title: "Pick your projects", line: "So your leads can find you." },
+  { id: "first-hour", title: "Clock your first hour here", line: "One tap at Impact Hub.", auto: true },
+];
 
 export const ONBOARDING_STEPS: { id: OnboardingStepId; group: string; title: string; line: string; auto?: boolean }[] = [
   { id: "values", group: "Meeting one · values and rules", title: "Read what Shapers stands for", line: "Values, and the rules everyone keeps." },

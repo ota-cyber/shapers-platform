@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { elapsed, fmt, greeting, hoursLabel } from "@/lib/dates";
-import { AdminToday, BuddyCard, LogHoursLink, TopPerformers, useOnboarding } from "@/components/blocks";
+import { AdminToday, BuddyCard, BuddyNudges, LogHoursLink, SetupCard, TopPerformers, useOnboarding } from "@/components/blocks";
 import { OrgCards } from "@/components/home";
 import { ClockInSheet, WeekPlanner } from "@/components/week";
 import { handle } from "@/components/ui";
 
 export default function Home() {
-  const { me, my, now, db, clockOut } = useApp();
+  const { me, my, now, db, clockOut, setupDone, stalledDays, onboardingDone } = useApp();
+  const setup = setupDone(me);
+  const settingUp = !!setup && !Object.values(setup).every(Boolean);
+  const nudges = db.members.some((m) => m.buddyId === me.id && m.onboarding !== null && (stalledDays(m) !== null || (!m.graduation && Object.values(onboardingDone(m)).every(Boolean))));
   const onboarding = useOnboarding();
   const [picking, setPicking] = useState(false);
   const session = db.sessions.find((s) => s.memberId === me.id);
@@ -42,6 +45,8 @@ export default function Home() {
       </section>
 
       {onboarding && <div className="home-row"><div className="card flush"><BuddyCard /></div></div>}
+      {settingUp && <div className="home-row"><div className="card"><SetupCard /></div></div>}
+      {nudges && <div className="home-row"><div className="card"><BuddyNudges /></div></div>}
 
       {me.admin && (
         <>

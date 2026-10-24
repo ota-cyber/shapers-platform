@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useApp } from "@/lib/store";
+import { useApp, type RosterRow } from "@/lib/store";
 import { fmt, hoursLabel } from "@/lib/dates";
 import { TIERS, type Standing } from "@/lib/tiers";
-import type { Member, Series } from "@/lib/types";
-import { ONBOARDING_STEPS } from "@/lib/seed";
+import type { Member, Series, TierId } from "@/lib/types";
+import { ONBOARDING_STEPS, SETUP_STEPS } from "@/lib/seed";
 import { RecordMeetings } from "@/components/home";
 import { Avatar, Img, Meter, Sheet, Signs, first, handle } from "@/components/ui";
 
@@ -69,7 +69,7 @@ function Team() {
           </div>
           <div className="panel">
             {chips}
-            {view === "everyone" ? <Overview /> : content}
+            {view === "everyone" ? <>{me.admin && <QuickAdd />}<Overview /></> : content}
           </div>
         </div>
       </div>
@@ -78,12 +78,12 @@ function Team() {
 }
 
 function People({ view, compact }: { view: View; compact?: boolean }) {
-  const { db, me, standingOf, onboardingDone } = useApp();
+  const { db, me, standingOf, onboardingDone, setupDone, stalledDays } = useApp();
   const [q, setQ] = useState("");
-  const [adding, setAdding] = useState<"member" | "project" | null>(null);
   const all = useMemo(() => db.members.map((m) => standingOf(m.id)), [db, standingOf]);
   const match = (s: Standing) => !q || s.member.name.toLowerCase().includes(q.toLowerCase());
   const newbies = all.filter((s) => s.member.onboarding !== null && match(s));
+  const settingUp = all.filter((s) => { const d = setupDone(s.member); return d && !Object.values(d).every(Boolean) && match(s); });
 
   if (view === "up" || view === "dropping") {
     const list = all.filter((s) => s.flag === (view === "up" ? "moving-up" : "dropping"));
@@ -118,12 +118,23 @@ function People({ view, compact }: { view: View; compact?: boolean }) {
                 <div><span className="nm">{s.member.name}</span><span className="hd">{handle(s.member)}</span></div>
                 <div className="signs s"><span>⊙ {n}/{ONBOARDING_STEPS.length} steps</span><span>☽ buddy {buddy ? first(buddy) : "—"}</span><span>↑ day {Math.max(1, Math.round((Date.now() - new Date(s.member.joined).getTime()) / 864e5))}</span></div>
                 <div style={{ marginTop: 8 }}><Meter value={n} max={ONBOARDING_STEPS.length} /></div>
+                {s.member.graduation ? <div className="small" style={{ marginTop: 6 }}>Buddy proposed ending onboarding. Waiting for an admin.</div>
+                  : stalledDays(s.member) !== null && <div className="small" style={{ marginTop: 6 }}>No progress in {stalledDays(s.member)} days. Their buddy has the nudge.</div>}
               </div>
               <span className="go">→</span>
             </Link>
           );
         })}
         {!newbies.length && <div className="empty">No one is onboarding.</div>}
+        {settingUp.length > 0 && (
+          <>
+            <div className="sect"><div className="h-l">Setting up</div><p className="small muted" style={{ marginTop: 6 }}>Members who were here before the app, on their three setup steps.</p></div>
+            {settingUp.map((s) => {
+              const n = Object.values(setupDone(s.member)!).filter(Boolean).length;
+              return <PersonRow key={s.member.id} s={s} reason={`${n} of ${SETUP_STEPS.length} setup steps`} dot />;
+            })}
+          </>
+        )}
       </>
     );
   }
@@ -133,15 +144,7 @@ function People({ view, compact }: { view: View; compact?: boolean }) {
   return (
     <>
       <div className="search"><span className="muted">⌕</span><input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-      {me.admin && !compact && (
-        <>
-          <div className="label pad" style={{ textTransform: "none", letterSpacing: 0, fontFamily: "var(--mono)" }}>Quick add</div>
-          <div className="quick">
-            <div className="q"><div className="ring"><Img name="key" /></div>Add a new member<div><button className="btn-s" onClick={() => setAdding("member")}>Add</button></div></div>
-            <div className="q"><div className="ring"><Img name="book" /></div>Start a project<div><button className="btn-s" onClick={() => setAdding("project")}>Add</button></div></div>
-          </div>
-        </>
-      )}
+      {me.admin && !compact && <QuickAdd />}
       {!compact && newbies.length > 0 && (
         <>
           <div className="label pad" style={{ textTransform: "none", letterSpacing: 0, fontFamily: "var(--mono)" }}>New</div>
@@ -156,8 +159,25 @@ function People({ view, compact }: { view: View; compact?: boolean }) {
         const head = L !== last ? ((last = L), <div key={"h" + L} className="letter">{L}</div>) : null;
         return [head, <PersonRow key={s.member.id} s={s} dot={s.member.onboarding !== null} />];
       })}
+
+    </>
+  );
+}
+
+/** Admins: add a cohort member, start a project, or bring in everyone from before the app. */
+function QuickAdd() {
+  const [adding, setAdding] = useState<"member" | "project" | "roster" | null>(null);
+  return (
+    <>
+      <div className="label pad" style={{ textTransform: "none", letterSpacing: 0, fontFamily: "var(--mono)" }}>Quick add</div>
+      <div className="quick">
+        <div className="q"><div className="ring"><Img name="key" /></div>Add a new member<div><button className="btn-s" onClick={() => setAdding("member")}>Add</button></div></div>
+        <div className="q"><div className="ring"><Img name="book" /></div>Start a project<div><button className="btn-s" onClick={() => setAdding("project")}>Add</button></div></div>
+        <div className="q"><div className="ring"><Img name="hands" /></div>Import the roster<div><button className="btn-s" onClick={() => setAdding("roster")}>Import</button></div></div>
+      </div>
       {adding === "member" && <AddMember onClose={() => setAdding(null)} />}
       {adding === "project" && <AddProject onClose={() => setAdding(null)} />}
+      {adding === "roster" && <ImportRoster onClose={() => setAdding(null)} />}
     </>
   );
 }
@@ -222,6 +242,54 @@ function AddMember({ onClose }: { onClose: () => void }) {
   );
 }
 
+const TIER_IDS: TierId[] = ["GO!", "Impact", "Core"];
+
+/** One member per line: name, email, tier, and optionally the date they reached that tier. */
+function parseRoster(text: string): { rows: RosterRow[]; bad: number } {
+  const rows: RosterRow[] = [];
+  let bad = 0;
+  for (const line of text.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    const [name, email, tierRaw, since] = line.split(/[,;\t]/).map((x) => x.trim());
+    const tier = TIER_IDS.find((t) => t.toLowerCase() === (tierRaw ?? "").toLowerCase().replace(/^go$/, "go!"));
+    if (!name || !email?.includes("@") || !tier || (since && !/^\d{4}-\d{2}-\d{2}$/.test(since))) bad++;
+    else rows.push({ name, email, tier, tierSince: since || undefined });
+  }
+  return { rows, bad };
+}
+
+function ImportRoster({ onClose }: { onClose: () => void }) {
+  const { importRoster } = useApp();
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<{ added: number; skipped: number } | null>(null);
+  const { rows, bad } = parseRoster(text);
+  if (result)
+    return (
+      <Sheet title="Import the roster" onClose={onClose}>
+        <div className="glance">
+          <div className="h-l">{result.added} member{result.added === 1 ? "" : "s"} in.</div>
+          <p className="small" style={{ marginTop: 10 }}>
+            {result.skipped ? `${result.skipped} were already here and were left as they are. ` : ""}Each new one gets three setup steps on their home screen: check their tier, pick their projects, clock their first hour. Find them under New.
+          </p>
+          <button className="btn" style={{ marginTop: 24 }} onClick={onClose}>Got it</button>
+        </div>
+      </Sheet>
+    );
+  return (
+    <Sheet title="Import the roster" onClose={onClose}>
+      <div className="pad stack" style={{ paddingTop: 22 }}>
+        <div className="h-l center">Everyone who was here before the app.</div>
+        <p className="small muted center">They keep their tier and skip onboarding. New cohort members are added one by one instead.</p>
+        <div className="field">
+          <label>One per line: name, email, tier, in tier since (optional)</label>
+          <textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Maja Horvat, maja@sandbox.example, Core, 2024-06-01\nRok Golob, rok@sandbox.example, Impact"} style={{ fontFamily: "var(--mono)", fontSize: 13, height: 180 }} />
+        </div>
+        <p className="small muted">{rows.length} ready{bad ? ` · ${bad} line${bad === 1 ? "" : "s"} can't be read (tier must be GO!, Impact or Core; date as YYYY-MM-DD)` : ""}</p>
+        <button className="btn block" disabled={!rows.length || bad > 0} onClick={() => setResult(importRoster(rows))}>Import {rows.length || ""}</button>
+      </div>
+    </Sheet>
+  );
+}
+
 function AddProject({ onClose }: { onClose: () => void }) {
   const { db, me, addProject } = useApp();
   const [name, setName] = useState("");
@@ -245,12 +313,13 @@ function AddProject({ onClose }: { onClose: () => void }) {
 }
 
 function Approvals() {
-  const { db, member, resolveBackfill, resolvePause } = useApp();
+  const { db, member, resolveBackfill, resolvePause, resolveGraduation } = useApp();
   const back = db.backfills.filter((b) => b.status === "pending");
   const pauses = db.pauses.filter((p) => p.status === "requested");
+  const grads = db.members.filter((m) => m.graduation);
   return (
     <>
-      <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, and pause requests. Everything else is trusted by default.</p></div>
+      <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, pause requests, and buddies ending onboarding. Everything else is trusted by default.</p></div>
       <div className="group-h">Hours back-filled</div>
       <div className="rows">
         {back.map((b) => (
@@ -278,6 +347,20 @@ function Approvals() {
           </div>
         ))}
         {!pauses.length && <div><span className="k muted">Nothing pending</span></div>}
+      </div>
+      <div className="group-h">Onboarding finished</div>
+      <div className="rows">
+        {grads.map((m) => (
+          <div key={m.id}>
+            <div className="grow">
+              <div className="k">{m.name}</div>
+              <div className="small muted">Proposed by {member(m.graduation!.proposedBy)?.name ?? "their buddy"} on {fmt.short(m.graduation!.at)}</div>
+            </div>
+            <button className="btn-s on" onClick={() => resolveGraduation(m.id, true)}>Confirm</button>
+            <button className="btn-s" onClick={() => resolveGraduation(m.id, false)}>Not yet</button>
+          </div>
+        ))}
+        {!grads.length && <div><span className="k muted">Nothing pending</span></div>}
       </div>
     </>
   );

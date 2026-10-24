@@ -26,6 +26,9 @@ export type OnboardingStepId =
   | "first-task"
   | "first-meeting";
 
+/** The short setup for members who joined before the platform (imported from the roster). */
+export type SetupStepId = "confirm-tier" | "projects" | "first-hour";
+
 export interface Member {
   id: string;
   name: string;
@@ -40,6 +43,12 @@ export interface Member {
   avatar: string; // image key in /public/img
   /** null once onboarding is finished (or for members who joined before the platform) */
   onboarding: Partial<Record<OnboardingStepId, boolean>> | null;
+  /** last time an onboarding step was ticked (ISO date); a week without progress nudges the buddy */
+  onboardingProgressAt?: string;
+  /** the buddy proposed ending onboarding; an admin confirms */
+  graduation?: { proposedBy: string; at: string } | null;
+  /** existing members imported from the roster: three setup steps; null or missing = nothing to set up */
+  setup?: Partial<Record<SetupStepId, boolean>> | null;
   seeded?: boolean; // demo-only member, not in the sandbox roster
   /** projects picked during onboarding; the project lead assigns the first task */
   wantsProjects?: string[];

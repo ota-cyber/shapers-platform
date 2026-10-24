@@ -49,11 +49,26 @@ Tokens live at the top of `src/app/globals.css`. Fonts: Instrument Serif, Hanken
 | `completeStep`, `joinProject` | `/onboarding` | first hour / task / meeting are derived, not stored |
 | `requestPause`, `resolvePause` | `/pauses` | approved pause weeks don't break streaks |
 | `setTier`, `addMember` | `/members` | admin; tier change restarts the time-in-tier clock |
+| `importRoster` | `POST /members/import` | admin; existing members keep their tier, skip onboarding, get the 3 setup steps; skip emails already on file |
+| `completeSetup` | `PATCH /members/:id/setup` | self only; "first hour" is derived, not stored |
+| `proposeGraduation` | `POST /members/:id/graduation` | the member's buddy only, and only when every onboarding step is done |
+| `resolveGraduation` | `PATCH /members/:id/graduation` | admin; confirm sets `onboarding` to null, "not yet" clears the proposal |
+
+## Onboarding system
+
+Two ways in, one way out:
+
+- **New cohort member:** admin adds them (Team → Quick add). Their home is the 11-step onboarding checklist mirroring the two onboarding meetings.
+- **Existing member (deploy day):** admin pastes the roster (Team → Quick add → Import the roster: `name, email, tier, in tier since`). They keep their tier and get 3 setup steps on home: check tier and hours, pick projects, clock the first hour.
+- **Stall nudge:** no onboarding step ticked for 7 days (`STALL_DAYS`) shows the buddy a card on home and on the member page; admins see the count. In-app only, never Slack.
+- **Finishing:** when every step is done, the buddy taps "End onboarding"; an admin confirms in Approvals (or on the member page). Then home switches to everyday mode.
+
+Sign-in is not built yet: the demo uses View as.
 
 Meetings are read from Google Calendar only. Nothing is written to Slack.
 
 ## Demo switches (You → Settings → Demo)
 
-- **View as**: Petra (GO!, close to Impact), Lea (new, onboarding), Rok (Impact, buddy), Ana (admin). Also in the desktop top bar.
+- **View as**: Petra (GO!, close to Impact), Lea (new, onboarding, stalled 10 days), Rok (Impact, buddy of Lea and Mia; Mia is ready to finish onboarding), Ana (admin), Zala / Nejc (existing members still on setup). Also in the desktop top bar.
 - **Pretend my next meeting is live**: shows meeting clock-in outside meeting times.
 - **Reset demo data**.

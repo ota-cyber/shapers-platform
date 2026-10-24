@@ -63,7 +63,7 @@ function You() {
 }
 
 function Settings() {
-  const { me, member, prefs, setPrefs, reset, db, today, requestPause } = useApp();
+  const { me, member, prefs, setPrefs, reset, db, today, requestPause, setupDone } = useApp();
   const buddy = member(me.buddyId);
   const [pause, setPause] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -96,7 +96,7 @@ function Settings() {
           <span className="k">View as</span>
           <select value={prefs.meId} onChange={(e) => setPrefs({ meId: e.target.value })} style={{ border: 0, background: "transparent", fontFamily: "var(--mono)", fontSize: 13, textAlign: "right" }}>
             {[...db.members].sort((a, b) => a.name.localeCompare(b.name)).map((m) => (
-              <option key={m.id} value={m.id}>{m.name} · {m.tier}{m.admin ? " · admin" : ""}{m.onboarding ? " · new" : ""}</option>
+              <option key={m.id} value={m.id}>{m.name} · {m.tier}{m.admin ? " · admin" : ""}{m.onboarding ? " · new" : Object.values(setupDone(m) ?? {}).some((v) => !v) ? " · setting up" : ""}</option>
             ))}
           </select>
         </label>

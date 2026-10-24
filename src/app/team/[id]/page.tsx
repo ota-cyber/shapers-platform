@@ -17,7 +17,7 @@ type Tab = "overview" | "hours" | "meetings" | "tasks";
 export default function MemberPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { member, standingOf, me, db, today, onboardingDone, setTier, completeStep } = useApp();
+  const { member, standingOf, me, db, today, onboardingDone, setTier, completeStep, stalledDays, proposeGraduation, resolveGraduation } = useApp();
   const [tab, setTab] = useState<Tab>("overview");
   const [pendingTier, setPendingTier] = useState<TierId | null>(null);
   const m = member(id);
@@ -27,6 +27,8 @@ export default function MemberPage() {
   const canSeeAll = me.admin || isBuddy || me.id === m.id;
   const buddy = member(m.buddyId);
   const done = onboardingDone(m);
+  const allDone = Object.values(done).every(Boolean);
+  const stalled = stalledDays(m);
   const tasksDone = db.tasks.filter((t) => t.assigneeId === m.id && t.status === "done").sort((a, b) => (b.doneAt ?? "").localeCompare(a.doneAt ?? ""));
   const open = myOpenTasks(db, m.id);
 
@@ -59,6 +61,18 @@ export default function MemberPage() {
         <p className="body" style={{ marginTop: 8 }}>{memberSummary(s, me)}</p>
         <div style={{ marginTop: 14 }}><Useful /></div>
       </section>
+
+      {isBuddy && stalled !== null && (
+        <section className="sect">
+          <div className="box">
+            <div className="bh">You&apos;re {first(m)}&apos;s buddy</div>
+            <div className="bb center">
+              <p className="small">No onboarding step has moved in {stalled} days. Ask {first(m)} how it&apos;s going and what&apos;s in the way.</p>
+              <p className="mono-lc" style={{ marginTop: 12, userSelect: "all" }}>{m.email}</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {isBuddy && s.toKeep > 0 && (
         <section className="sect">
@@ -96,6 +110,24 @@ export default function MemberPage() {
             ))}
           </div>
           {buddy && <p className="small muted" style={{ marginTop: 10 }}>Buddy: {buddy.name}</p>}
+          {m.graduation ? (
+            <div style={{ marginTop: 16 }}>
+              <p className="small">{member(m.graduation.proposedBy)?.name ?? "The buddy"} proposed ending onboarding on {fmt.short(m.graduation.at)}.{me.admin ? "" : " An admin confirms."}</p>
+              {me.admin && (
+                <div className="row" style={{ marginTop: 10, gap: 8 }}>
+                  <button className="btn-s on" onClick={() => resolveGraduation(m.id, true)}>Confirm</button>
+                  <button className="btn-s" onClick={() => resolveGraduation(m.id, false)}>Not yet</button>
+                </div>
+              )}
+            </div>
+          ) : isBuddy && (
+            <div style={{ marginTop: 16 }}>
+              <button className="btn-s on" disabled={!allDone} onClick={() => proposeGraduation(m.id)}>End onboarding</button>
+              <p className="small muted" style={{ marginTop: 8 }}>
+                {allDone ? `When ${first(m)} has found their place. An admin confirms, then home becomes their everyday screen.` : "Every step has to be done first."}
+              </p>
+            </div>
+          )}
         </section>
       )}
 

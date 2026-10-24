@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useApp } from "@/lib/store";
-import { addDays, hoursLabel } from "@/lib/dates";
+import { addDays, fmt, hoursLabel } from "@/lib/dates";
 import { headline } from "@/lib/copy";
-import { ONBOARDING_STEPS } from "@/lib/seed";
+import { ONBOARDING_STEPS, SETUP_STEPS } from "@/lib/seed";
 import { Avatar, Sheet, Signs, first, handle } from "./ui";
 
 /** The week's one-line statement, for both everyday and onboarding mode. */
@@ -23,6 +23,88 @@ export function useHeadline(): string {
 export function useOnboarding(): boolean {
   const { me, onboardingDone } = useApp();
   return me.onboarding !== null && Object.values(onboardingDone(me)).some((v) => !v);
+}
+
+/** Existing members on their first days in the app: three steps, then the normal home. */
+export function SetupCard() {
+  const { me, db, setupDone, completeSetup, joinProject } = useApp();
+  const [off, setOff] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const done = setupDone(me);
+  if (!done || Object.values(done).every(Boolean)) return null;
+  const n = Object.values(done).filter(Boolean).length;
+  return (
+    <section className="sect">
+      <div className="label m">Setting up · {n} of {SETUP_STEPS.length}</div>
+      <div className="h-l" style={{ marginTop: 10 }}>You already know Shapers. Three things and the app knows you too.</div>
+      <div className="rows" style={{ margin: "14px -18px -20px" }}>
+        {SETUP_STEPS.map((st) => (
+          <div key={st.id} style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div className="grow">
+              <div className="k" style={{ textDecoration: done[st.id] ? "line-through" : undefined, color: done[st.id] ? "var(--muted)" : undefined }}>{st.title}</div>
+              {!done[st.id] && st.id === "confirm-tier" && (
+                <div className="small muted">
+                  {off ? "Tell an admin. They change tiers and hours." : `${me.tier}, ${me.weeklyHours} h a week, ${me.tier} since ${fmt.short(me.tierSince)}.`}
+                </div>
+              )}
+              {!done[st.id] && st.id === "projects" && (
+                <div className="row" style={{ flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                  {db.projects.map((p) => (
+                    <button key={p.id} className={`btn-s ${picked.includes(p.id) ? "on" : ""}`} onClick={() => setPicked(picked.includes(p.id) ? picked.filter((x) => x !== p.id) : [...picked, p.id])}>{p.name}</button>
+                  ))}
+                </div>
+              )}
+              {!done[st.id] && st.id === "first-hour" && <div className="small muted">{st.line} It ticks itself.</div>}
+            </div>
+            {!done[st.id] && st.id === "confirm-tier" && (
+              <>
+                <button className="btn-s on" onClick={() => completeSetup(me.id, "confirm-tier")}>That&apos;s right</button>
+                {!off && <button className="btn-s" onClick={() => setOff(true)}>Not right</button>}
+              </>
+            )}
+            {!done[st.id] && st.id === "projects" && (
+              <button className="btn-s on" disabled={!picked.length} onClick={() => picked.forEach((id) => joinProject(me.id, id))}>Save</button>
+            )}
+            {done[st.id] && <span className="v">Done</span>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Buddies: mentees who stopped moving, and mentees ready to finish onboarding. */
+export function BuddyNudges() {
+  const { me, db, stalledDays, onboardingDone } = useApp();
+  const mentees = db.members.filter((m) => m.buddyId === me.id && m.onboarding !== null);
+  const stuck = mentees.map((m) => ({ m, d: stalledDays(m) })).filter((x) => x.d !== null);
+  const ready = mentees.filter((m) => !m.graduation && Object.values(onboardingDone(m)).every(Boolean));
+  if (!stuck.length && !ready.length) return null;
+  return (
+    <section className="sect">
+      <div className="label m">Your mentees</div>
+      <ul className="compat" style={{ marginTop: 14 }}>
+        {stuck.map(({ m, d }) => (
+          <li key={m.id}>
+            <span className="face">☽</span>
+            <div>
+              <Link href={`/team/${m.id}`} className="t">{first(m)} hasn&apos;t moved in {d} days</Link>
+              <div className="s">Not a warning. A good moment to ask how it&apos;s going.</div>
+            </div>
+          </li>
+        ))}
+        {ready.map((m) => (
+          <li key={m.id}>
+            <span className="face">↑</span>
+            <div>
+              <Link href={`/team/${m.id}`} className="t">{first(m)} has done every step</Link>
+              <div className="s">If they&apos;ve found their place, end their onboarding. An admin confirms.</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 /** New members: who their buddy is, and a nudge to ask for help. */
@@ -167,14 +249,19 @@ export function LogHours({ onClose }: { onClose: () => void }) {
 }
 
 export function AdminToday() {
-  const { db, standingOf, me } = useApp();
+  const { db, standingOf, me, stalledDays, setupDone } = useApp();
   if (!me.admin) return null;
   const all = db.members.map((m) => standingOf(m.id));
   const behind = all.filter((s) => s.toKeep > 0).sort((a, b) => b.toKeep / b.target - a.toKeep / a.target);
   const up = all.filter((s) => s.flag === "moving-up");
   const down = all.filter((s) => s.flag === "dropping");
-  const pending = db.backfills.filter((b) => b.status === "pending").length + db.pauses.filter((p) => p.status === "requested").length;
+  const pending =
+    db.backfills.filter((b) => b.status === "pending").length +
+    db.pauses.filter((p) => p.status === "requested").length +
+    db.members.filter((m) => m.graduation).length;
   const newbies = db.members.filter((m) => m.onboarding !== null).length;
+  const stuck = db.members.filter((m) => stalledDays(m) !== null).length;
+  const settingUp = db.members.filter((m) => { const d = setupDone(m); return d && !Object.values(d).every(Boolean); }).length;
   return (
     <section className="sect">
       <div className="label m">At the institute</div>
@@ -183,7 +270,7 @@ export function AdminToday() {
         <li><span className="face">↑</span><div><Link href="/team?view=up" className="t">Moving up</Link><div className="s">{up.map((s) => first(s.member)).join(", ") || "Nobody yet"}</div></div></li>
         <li className={down.length ? "bad" : ""}><span className="face" style={down.length ? { background: "var(--dark)", color: "#fff" } : undefined}>↓</span><div><Link href="/team?view=dropping" className="t">Dropping</Link><div className="s">{down.map((s) => first(s.member)).join(", ") || "Nobody"}</div></div></li>
         <li><span className="face">✎</span><div><Link href="/team?view=approvals" className="t">Waiting for you</Link><div className="s">{pending} approval{pending === 1 ? "" : "s"}</div></div></li>
-        <li><span className="face">⊙</span><div><Link href="/team?view=new" className="t">Onboarding</Link><div className="s">{newbies} new member{newbies === 1 ? "" : "s"}</div></div></li>
+        <li><span className="face">⊙</span><div><Link href="/team?view=new" className="t">Onboarding</Link><div className="s">{newbies} new member{newbies === 1 ? "" : "s"}{stuck ? `, ${stuck} stuck a week` : ""}{settingUp ? ` · ${settingUp} still setting up` : ""}</div></div></li>
       </ul>
       <Link href="/team?view=overview" className="arrow" style={{ marginTop: 10 }}>How the institute is doing →</Link>
     </section>

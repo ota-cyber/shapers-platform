@@ -5,12 +5,12 @@
 // demo survives a reload.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AttendanceState, Db, Member, OnboardingStepId, Priority, Project, Task, TaskStatus } from "./types";
-import { seedDb, ONBOARDING_STEPS } from "./seed";
+import type { AttendanceState, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
+import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 
-const KEY = "shapers-ui-v3";
+const KEY = "shapers-ui-v4";
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -51,9 +51,27 @@ interface Ctx {
   resolvePause: (id: string, approve: boolean) => void;
   setTier: (memberId: string, tier: Member["tier"]) => void;
   addMember: (m: { name: string; email: string; buddyId: string | null; series: Member["series"] }) => void;
+  importRoster: (rows: RosterRow[]) => { added: number; skipped: number };
+  completeSetup: (memberId: string, step: SetupStepId, value?: boolean) => void;
+  proposeGraduation: (memberId: string) => void;
+  resolveGraduation: (memberId: string, approve: boolean) => void;
   liveMeetingId: string | null;
   onboardingDone: (m: Member) => Record<OnboardingStepId, boolean>;
+  /** null when the member has nothing to set up */
+  setupDone: (m: Member) => Record<SetupStepId, boolean> | null;
+  /** days without onboarding progress, once that reaches STALL_DAYS; null otherwise */
+  stalledDays: (m: Member) => number | null;
 }
+
+export interface RosterRow {
+  name: string;
+  email: string;
+  tier: Member["tier"];
+  /** ISO date the member reached their current tier; defaults to today */
+  tierSince?: string;
+}
+
+const WEEKLY: Record<Member["tier"], number> = { "GO!": 4, Impact: 10, Core: 70 };
 
 const AppCtx = createContext<Ctx | null>(null);
 
@@ -64,6 +82,7 @@ export function useApp(): Ctx {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 9);
+const AVATARS = ["bust", "stone", "apple", "moon", "dove", "hands", "compass", "sprout", "book", "key"];
 
 function load(): { db: Db; prefs: Prefs } {
   const fresh = { db: seedDb(), prefs: { meId: "petra.jerman", liveMeeting: false } };
@@ -140,6 +159,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ONBOARDING_STEPS.map((s) => [s.id, !!(m.onboarding?.[s.id] || auto[s.id])]),
       ) as Record<OnboardingStepId, boolean>;
     };
+    const setupDone = (m: Member) => {
+      if (!m.setup) return null;
+      const firstHour = db.hours.some((h) => h.memberId === m.id && h.hours > 0) || db.sessions.some((x) => x.memberId === m.id);
+      return Object.fromEntries(SETUP_STEPS.map((s) => [s.id, !!(m.setup?.[s.id] || (s.id === "first-hour" && firstHour))])) as Record<SetupStepId, boolean>;
+    };
+    const stalledDays = (m: Member) => {
+      if (m.onboarding === null || m.graduation || Object.values(onboardingDone(m)).every(Boolean)) return null;
+      const days = Math.floor((new Date(today).getTime() - new Date(m.onboardingProgressAt ?? m.joined).getTime()) / 864e5);
+      return days >= STALL_DAYS ? days : null;
+    };
 
     return {
       db,
@@ -153,6 +182,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       stillWorkingDue,
       liveMeetingId,
       onboardingDone,
+      setupDone,
+      stalledDays,
       setPrefs: (p) => setState((s) => (s ? { ...s, prefs: { ...s.prefs, ...p } } : s)),
       reset: () => setState({ db: seedDb(), prefs }),
       clockIn: (taskId) =>
@@ -258,13 +289,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
           m.onboarding = { ...(m.onboarding ?? {}), [step]: v };
+          if (v) m.onboardingProgressAt = today;
         }),
       // Records interest only. Members can't pick up tasks themselves; the project lead assigns the first one.
       joinProject: (memberId, projectId) =>
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
           m.wantsProjects = Array.from(new Set([...(m.wantsProjects ?? []), projectId]));
-          m.onboarding = { ...(m.onboarding ?? {}), project: true };
+          if (m.onboarding !== null) {
+            m.onboarding = { ...m.onboarding, project: true };
+            m.onboardingProgressAt = today;
+          }
+          if (m.setup) m.setup = { ...m.setup, projects: true };
         }),
       requestPause: (from, to, reason) =>
         mutate((db) => db.pauses.push({ id: uid(), memberId: me.id, from, to, reason, status: "requested" })),
@@ -277,7 +313,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
           m.tier = tier;
-          m.weeklyHours = tier === "GO!" ? 4 : tier === "Impact" ? 10 : 70;
+          m.weeklyHours = WEEKLY[tier];
           m.tierSince = today;
         }),
       addMember: ({ name, email, buddyId, series }) =>
@@ -285,8 +321,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const id = email.split("@")[0] || uid();
           db.members.push({
             id, name, email, tier: "GO!", weeklyHours: 4, admin: false, series: ["Community", ...series.filter((s) => s !== "Community")],
-            joined: today, tierSince: today, buddyId, avatar: "sprout", onboarding: {}, seeded: true,
+            joined: today, tierSince: today, buddyId, avatar: "sprout", onboarding: {}, onboardingProgressAt: today, seeded: true,
           });
+        }),
+      // Deploy day: existing members come in from the roster and get the short setup, not onboarding.
+      importRoster: (rows) => {
+        const known = new Set(db.members.map((m) => m.email.toLowerCase()));
+        const fresh = rows.filter((r, i) => !known.has(r.email.toLowerCase()) && rows.findIndex((x) => x.email.toLowerCase() === r.email.toLowerCase()) === i);
+        mutate((db) => {
+          fresh.forEach((r, i) => {
+            const since = r.tierSince ?? today;
+            db.members.push({
+              id: r.email.split("@")[0] || uid(), name: r.name, email: r.email, tier: r.tier, weeklyHours: WEEKLY[r.tier], admin: false,
+              series: ["Community"], joined: since, tierSince: since, buddyId: null, avatar: AVATARS[i % AVATARS.length],
+              onboarding: null, setup: {}, seeded: true,
+            });
+          });
+        });
+        return { added: fresh.length, skipped: rows.length - fresh.length };
+      },
+      completeSetup: (memberId, step, v = true) =>
+        mutate((db) => {
+          const m = db.members.find((x) => x.id === memberId)!;
+          if (m.setup) m.setup = { ...m.setup, [step]: v };
+        }),
+      // The buddy says onboarding is done; an admin confirms in Approvals.
+      proposeGraduation: (memberId) =>
+        mutate((db) => {
+          const m = db.members.find((x) => x.id === memberId)!;
+          if (m.buddyId !== me.id || !Object.values(onboardingDone(m)).every(Boolean)) return;
+          m.graduation = { proposedBy: me.id, at: today };
+        }),
+      resolveGraduation: (memberId, approve) =>
+        mutate((db) => {
+          if (!me.admin) return;
+          const m = db.members.find((x) => x.id === memberId)!;
+          if (approve && m.graduation) m.onboarding = null;
+          m.graduation = null;
         }),
     };
   }, [state, now, mutate]);
