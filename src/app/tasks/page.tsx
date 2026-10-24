@@ -9,7 +9,7 @@ import type { Priority, TaskStatus } from "@/lib/types";
 import { Board, COLUMNS, type Lane, type LaneMode } from "@/components/tasks/Board";
 import { Timeline } from "@/components/tasks/Timeline";
 import { Sheet } from "@/components/ui";
-import { canCreateTasks, taskRights } from "@/lib/permissions";
+import { canAssignOthers, taskRights } from "@/lib/permissions";
 
 const PRI: Record<Priority, string> = { high: "High", normal: "Normal", low: "Low" };
 
@@ -63,7 +63,7 @@ function Tasks() {
           <Toggle value={view} onChange={setView} items={[["board", "Board"], ["timeline", "Timeline"]]} />
           <Toggle value={scope} onChange={setScope} items={[["all", "Everyone"], ["mine", "Mine"]]} />
           {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
-          {canCreateTasks(me) && <button className="btn" onClick={() => setAdding(true)}>New task</button>}
+          <button className="btn" onClick={() => setAdding(true)}>New task</button>
         </div>
       </div>
 
@@ -167,17 +167,21 @@ function NewTask({ onClose }: { onClose: () => void }) {
         </div>
         <div className="row">
           <div className="field grow"><label htmlFor="nt-who">Who</label>
-            <select id="nt-who" value={assigneeId} onChange={(e) => setAssignee(e.target.value)}>
-              <option value="">Nobody yet</option>
-              {[...db.members].sort((a, b) => a.name.localeCompare(b.name)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+            {canAssignOthers(me) ? (
+              <select id="nt-who" value={assigneeId} onChange={(e) => setAssignee(e.target.value)}>
+                <option value="">Nobody yet</option>
+                {[...db.members].sort((a, b) => a.name.localeCompare(b.name)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            ) : (
+              <input id="nt-who" value={`${me.name} (you)`} disabled />
+            )}
           </div>
           <div className="field grow"><label htmlFor="nt-due">Due</label><input id="nt-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div>
         </div>
         <div className="row" style={{ justifyContent: "center" }}>
           {(["low", "normal", "high"] as Priority[]).map((p) => <button key={p} className={`btn-s ${priority === p ? "on" : ""}`} onClick={() => setPriority(p)}>{PRI[p]}</button>)}
         </div>
-        <button className="btn block" disabled={!title} onClick={() => { addTask({ title, projectId, assigneeId: assigneeId || null, due: due || null, priority, status, start: today }); onClose(); }}>Add task</button>
+        <button className="btn block" disabled={!title} onClick={() => { addTask({ title, projectId, assigneeId: canAssignOthers(me) ? assigneeId || null : me.id, due: due || null, priority, status, start: today }); onClose(); }}>Add task</button>
       </div>
     </Sheet>
   );

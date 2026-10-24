@@ -21,7 +21,7 @@ import { useApp, STATUS_LABEL } from "@/lib/store";
 import { fmt } from "@/lib/dates";
 import { initials, projectColor } from "@/lib/colors";
 import type { Task, TaskStatus } from "@/lib/types";
-import { canCreateTasks, taskRights } from "@/lib/permissions";
+import { canAssignOthers, taskRights } from "@/lib/permissions";
 
 export const COLUMNS: TaskStatus[] = ["idea", "todo", "doing", "review", "done"];
 
@@ -142,7 +142,7 @@ function Cell(props: {
         title: title.trim(),
         status: props.status,
         projectId: props.mode === "project" ? props.lane.key : props.defaultProject,
-        assigneeId: props.mode === "person" ? (props.lane.key === "_none" ? null : props.lane.key) : props.meId,
+        assigneeId: !canAssignOthers(me) ? me.id : props.mode === "person" ? (props.lane.key === "_none" ? null : props.lane.key) : props.meId,
         priority: "normal",
         start: today,
         due: null,
@@ -175,7 +175,7 @@ function Cell(props: {
             }
           }}
         />
-      ) : canCreateTasks(me) && (
+      ) : (canAssignOthers(me) || props.mode !== "person" || props.lane.key === me.id) && (
         <button className="kb-add" onClick={() => setAdding(true)} aria-label={`Add a task to ${STATUS_LABEL[props.status]}`}>+</button>
       )}
     </div>

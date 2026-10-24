@@ -26,5 +26,11 @@ export function taskRights(me: Member, t: Task): TaskRights {
   return { edit: mine, reassign: false, move: false };
 }
 
-/** Creating tasks and projects needs full task access. */
-export const canCreateTasks = (me: Member) => canManageTasks(me);
+/** Everyone can create tasks; GO! and Impact members only for themselves (assignee is forced to them). */
+export const canCreateTasks = () => true;
+
+/** Who a new task may be assigned to at creation. */
+export const canAssignOthers = (me: Member) => canManageTasks(me);
+
+/** Creating projects needs full task access. */
+export const canCreateProjects = (me: Member) => canManageTasks(me);
