@@ -555,3 +555,45 @@ img.float-img { height: auto; }
 .side-path .compat .t { font-size: 11px; }
 .side-path .compat .s { font-size: 12px; }
 .side-path .small { font-size: 11.5px; }
+
+/* ---------- landing week planner ---------- */
+.btn.big { min-height: 60px; padding: 0 46px; font-size: 16px; }
+.dodont.big { max-width: 760px; gap: 48px; margin-top: 30px; }
+.dodont.big .lbl { font-size: 15px; margin-bottom: 8px; }
+.dodont.big li { font-size: 26px; line-height: 1.3; }
+.do-drag { cursor: grab; touch-action: none; user-select: none; }
+.do-drag:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.clock { margin-top: 34px; display: flex; flex-direction: column; align-items: center; }
+.wk { margin-top: 40px; text-align: left; }
+.wk-head { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
+.wk-scroll { overflow-x: auto; }
+.wk-grid { display: grid; grid-template-columns: 92px repeat(7, minmax(84px, 1fr)); min-width: 680px; border: 1px solid var(--line); background: var(--paper); }
+.wk-grid > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.wk-lab { padding: 12px 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.wk-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; }
+.wk-day .dw { font-family: var(--mono); font-size: 11px; color: var(--text); }
+.wk-day .dn { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; }
+.wk-day.today .dn { background: #4a4a4a; color: #fff; }
+.wk-cell { padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 76px; }
+.wk-cell.today, .wk-drop.today { background: #f1f1f1; }
+.wk-meet { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 7px 8px; border: 1px solid var(--line-strong); background: var(--paper); }
+.wk-meet:hover { border-color: var(--ink); }
+.wk-meet .t { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.wk-meet .n { font-family: var(--serif); font-size: 16px; line-height: 1.15; color: var(--ink); }
+.wk-meet .s { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.wk-meet.past { opacity: 0.55; }
+.wk-meet.live { background: var(--dark); border-color: var(--dark); }
+.wk-meet.live .t, .wk-meet.live .n, .wk-meet.live .s { color: var(--on-dark); }
+.wk-tasks { position: relative; border-right: 0 !important; }
+.wk-drop { position: absolute; top: 0; bottom: 0; width: calc(100% / 7); border-right: 1px solid var(--line); }
+.wk-drop.over { background: #e3e3e3; outline: 2px dashed var(--ink); outline-offset: -4px; }
+.wk-bar { position: absolute; height: 26px; display: flex; align-items: center; padding: 0 8px; font-size: 12px; color: #1d1d1d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.12); z-index: 1; }
+.wk-bar.is-done { opacity: 0.55; text-decoration: line-through; }
+.wk-empty { position: absolute; left: 12px; top: 36px; font-family: var(--mono); font-size: 11px; color: var(--faint); pointer-events: none; }
+.pick { display: grid; gap: 6px; }
+.pick-row { display: flex; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border: 1px solid var(--line-strong); background: var(--paper); font-size: 15px; }
+.pick-row[aria-checked="true"] { border-color: var(--ink); outline: 1px solid var(--ink); }
+@media (min-width: 1000px) {
+  .dodont.big li { font-size: 30px; }
+  .home .glance { max-width: 1180px; margin: 0 auto; }
+}

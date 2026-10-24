@@ -10,7 +10,7 @@ import { seedDb, ONBOARDING_STEPS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 
-const KEY = "shapers-ui-v2";
+const KEY = "shapers-ui-v3";
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -32,7 +32,7 @@ interface Ctx {
   stillWorkingDue: boolean;
   setPrefs: (p: Partial<Prefs>) => void;
   reset: () => void;
-  clockIn: () => void;
+  clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
   clockOut: () => void;
   logHours: (date: string, hours: number, note?: string) => "logged" | "requested";
@@ -125,7 +125,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const stillWorkingDue = !!session && new Date(session.blockEnd).getTime() - now.getTime() <= PROMPT_BEFORE_MS;
 
     const upcoming = db.meetings.filter((m) => new Date(m.end) > now).sort((a, b) => a.start.localeCompare(b.start));
-    const realLive = upcoming.find((m) => new Date(m.start).getTime() - 15 * 60_000 <= now.getTime());
+    // A meeting is live only while it is going on: from its start to its end.
+    const realLive = upcoming.find((m) => new Date(m.start) <= now && m.memberIds.includes(me.id));
     const liveMeetingId = realLive?.id ?? (prefs.liveMeeting ? (upcoming.find((m) => m.memberIds.includes(me.id))?.id ?? null) : null);
 
     const onboardingDone = (m: Member) => {
@@ -154,10 +155,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       onboardingDone,
       setPrefs: (p) => setState((s) => (s ? { ...s, prefs: { ...s.prefs, ...p } } : s)),
       reset: () => setState({ db: seedDb(), prefs }),
-      clockIn: () =>
+      clockIn: (taskId) =>
         mutate((db) => {
           if (db.sessions.some((s) => s.memberId === me.id)) return;
-          db.sessions.push({ memberId: me.id, start: now.toISOString(), blockEnd: new Date(now.getTime() + BLOCK_MS).toISOString() });
+          db.sessions.push({ memberId: me.id, start: now.toISOString(), blockEnd: new Date(now.getTime() + BLOCK_MS).toISOString(), taskId });
         }),
       stillWorking: () =>
         mutate((db) => {
@@ -304,8 +305,10 @@ function addHours(db: Db, memberId: string, date: string, hours: number) {
 function finishSession(db: Db, memberId: string, end: Date) {
   const s = db.sessions.find((x) => x.memberId === memberId);
   if (!s) return;
-  const h = Math.max(0, (end.getTime() - new Date(s.start).getTime()) / 3_600_000);
-  addHours(db, memberId, isoDate(new Date(s.start)), Math.round(h * 4) / 4);
+  const h = Math.round((Math.max(0, (end.getTime() - new Date(s.start).getTime()) / 3_600_000)) * 4) / 4;
+  addHours(db, memberId, isoDate(new Date(s.start)), h);
+  const t = s.taskId ? db.tasks.find((x) => x.id === s.taskId) : undefined;
+  if (t && h > 0) t.history.push({ at: end.toISOString(), by: memberId, what: `${h} h clocked` });
   db.sessions = db.sessions.filter((x) => x.memberId !== memberId);
 }
 

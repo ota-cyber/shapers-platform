@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useApp, attendanceOf } from "@/lib/store";
-import { addDays, fmt, hoursLabel } from "@/lib/dates";
-import { headline, nextMeeting } from "@/lib/copy";
+import { useApp } from "@/lib/store";
+import { addDays, hoursLabel } from "@/lib/dates";
+import { headline } from "@/lib/copy";
 import { ONBOARDING_STEPS } from "@/lib/seed";
-import { Avatar, Img, Sheet, Signs, first, handle } from "./ui";
+import { Avatar, Sheet, Signs, first, handle } from "./ui";
 
 /** The week's one-line statement, for both everyday and onboarding mode. */
 export function useHeadline(): string {
@@ -163,50 +163,6 @@ export function LogHours({ onClose }: { onClose: () => void }) {
         <p className="small muted center">Meetings don&apos;t count as hours. Clock in to those separately.</p>
       </div>
     </Sheet>
-  );
-}
-
-export function NextMeeting() {
-  const { db, me, now, liveMeetingId, meetingClockIn, announceAbsence } = useApp();
-  const live = liveMeetingId ? db.meetings.find((m) => m.id === liveMeetingId && m.memberIds.includes(me.id)) : undefined;
-  const m = live ?? nextMeeting(db, me.id, now);
-  const [msg, setMsg] = useState<string | null>(null);
-  if (!m) return null;
-  const state = attendanceOf(db, m.id, me.id);
-  const absent = db.absences.find((a) => a.memberId === me.id && a.meetingId === m.id);
-  return (
-    <section className="sect">
-      <div className="label m">{live ? "Happening now" : "Next meeting"}</div>
-      <div className="between" style={{ marginTop: 12, alignItems: "flex-start" }}>
-        <div>
-          <div className="h-l">{m.series}</div>
-          <div className="mono-lc muted" style={{ marginTop: 4 }}>{fmt.weekday(m.start)} {fmt.short(m.start)} · {fmt.time(m.start)}–{fmt.time(m.end)}</div>
-          <div className="small muted">{m.location}</div>
-        </div>
-        <Img name="chair" className="float-img" />
-      </div>
-      {live ? (
-        state === "present" || state === "remote" ? (
-          <p className="h-s" style={{ marginTop: 14 }}>You&apos;re in, {state === "remote" ? "remotely" : "in person"}. Meetings don&apos;t count as hours.</p>
-        ) : (
-          <div className="row" style={{ marginTop: 16 }}>
-            <button className="btn" onClick={() => meetingClockIn(m.id, "present")}>I&apos;m here</button>
-            <button className="btn outline" onClick={() => meetingClockIn(m.id, "remote")}>Remote</button>
-          </div>
-        )
-      ) : (
-        <div style={{ marginTop: 14 }}>
-          {absent || msg ? (
-            <p className="small">{msg ?? (absent!.excused ? "Absence announced in time. It counts as excused." : "Absence announced late. It will count as unexcused.")}</p>
-          ) : (
-            <button className="link" onClick={() => setMsg(announceAbsence(m.id) ? "Absence announced in time. It counts as excused. Tell the team on Slack too." : `Less than ${m.series === "Community" ? 72 : 24} h before: this will count as unexcused.`)}>
-              I can&apos;t make it
-            </button>
-          )}
-          <p className="small muted" style={{ marginTop: 8 }}>Clock-in opens 15 minutes before it starts.</p>
-        </div>
-      )}
-    </section>
   );
 }
 

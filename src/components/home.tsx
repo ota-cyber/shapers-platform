@@ -8,7 +8,6 @@ import { addDays, fmt, isoDate, weekStart } from "@/lib/dates";
 import { myOpenTasks, nextMeeting } from "@/lib/copy";
 import { projectColor } from "@/lib/colors";
 import { Meter } from "./ui";
-import { ONBOARDING_STEPS } from "@/lib/seed";
 
 export function MeetingsCard() {
   const { me, my, db, now, today, liveMeetingId, meetingClockIn } = useApp();
@@ -98,60 +97,6 @@ export function OrgCards() {
         <div className="big"><span className="serif">{doneWeek}</span><span className="of">done this week · {late} late</span></div>
       </section>
     </div>
-  );
-}
-
-/** Co–Star's Do / Don't, as Do (open tasks) and Meet (meetings left this week). */
-export function DoMeet({ onboarding }: { onboarding: boolean }) {
-  const { me, db, now, today, onboardingDone } = useApp();
-  const done = onboardingDone(me);
-  const doItems = onboarding
-    ? ONBOARDING_STEPS.filter((s) => !done[s.id]).slice(0, 3).map((s) => ({ key: s.id, label: s.title, href: "/onboarding" }))
-    : myOpenTasks(db, me.id).slice(0, 3).map((t) => ({ key: t.id, label: t.title, href: `/tasks?task=${t.id}` }));
-  const weekEnd = addDays(weekStart(today), 6);
-  const meets = db.meetings
-    .filter((m) => m.memberIds.includes(me.id) && new Date(m.end) > now && isoDate(new Date(m.start)) <= weekEnd)
-    .sort((a, b) => a.start.localeCompare(b.start));
-  const next = meets.length ? null : nextMeeting(db, me.id, now);
-  const day = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
-  return (
-    <div className="dodont">
-      <div>
-        <div className="lbl">Do</div>
-        <ul>
-          {doItems.map((d) => <li key={d.key}><Link href={d.href}>{d.label}</Link></li>)}
-          {!doItems.length && <li className="muted">Nothing pending</li>}
-        </ul>
-      </div>
-      <div>
-        <div className="lbl">Meet</div>
-        <ul>
-          {meets.map((m) => <li key={m.id}><Link href={`/meetings/${m.id}`}>{m.series}, {day(m.start)} {fmt.time(m.start)}</Link></li>)}
-          {!meets.length && <li className="muted">Nothing left this week</li>}
-        </ul>
-        {next && <div className="next-meet">Next: {next.series}, {day(next.start)} {fmt.short(next.start)}</div>}
-      </div>
-    </div>
-  );
-}
-
-/** The member's next meetings, read from the calendar. */
-export function ComingUp() {
-  const { db, me, now } = useApp();
-  const next = db.meetings.filter((m) => m.memberIds.includes(me.id) && new Date(m.start) > now).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 6);
-  return (
-    <>
-      <div className="group-h">Coming up</div>
-      <div className="rows">
-        {next.map((m) => (
-          <Link key={m.id} href={`/meetings/${m.id}`}>
-            <span className="planet" />
-            <span className="k">{m.series}<br /><span className="muted">{fmt.dow(m.start)} {fmt.short(m.start)} · {fmt.time(m.start)}</span></span>
-            <span className="go">→</span>
-          </Link>
-        ))}
-      </div>
-    </>
   );
 }
 

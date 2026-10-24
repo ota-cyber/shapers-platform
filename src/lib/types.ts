@@ -57,6 +57,8 @@ export interface Session {
   memberId: string;
   start: string; // ISO datetime
   blockEnd: string; // ISO datetime
+  /** the task this hour is for; null = general office work */
+  taskId: string | null;
 }
 
 export interface Meeting {

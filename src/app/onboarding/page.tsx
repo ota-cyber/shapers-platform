@@ -158,7 +158,7 @@ export default function Onboarding() {
     );
 
   return (
-    <Frame label="Your first hour" title="Clock in. Every hour counts toward your week." cta="Clock in now" onCta={() => { clockIn(); setFinished(true); }}>
+    <Frame label="Your first hour" title="Clock in. Every hour counts toward your week." cta="Clock in now" onCta={() => { clockIn(null); setFinished(true); }}>
       <div style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
         {[
           ["now", "Your week at a glance", `${standingOf(me.id).toKeep ? `${standingOf(me.id).toKeep} h to keep GO! this week.` : "Your week is made."}`],
