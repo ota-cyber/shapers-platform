@@ -79,7 +79,7 @@ function DoMeet({ onboarding }: { onboarding: boolean }) {
           {steps.map((s) => <li key={s.id}><Link href="/onboarding">{s.title}</Link></li>)}
           {!tasks.length && !steps.length && <li className="muted">Nothing pending</li>}
         </ul>
-        {!onboarding && tasks.length > 0 && <div className="next-meet">Drag a task onto a day to plan it</div>}
+        {onboarding && tasks.length > 0 && <div className="next-meet">Drag a task onto a day to plan it</div>}
       </div>
       <div>
         <div className="lbl">Meet</div>

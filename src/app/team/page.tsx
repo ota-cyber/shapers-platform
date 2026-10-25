@@ -9,7 +9,7 @@ import { TIERS, type Standing } from "@/lib/tiers";
 import type { Member, Series, TierId } from "@/lib/types";
 import { ONBOARDING_STEPS, SETUP_STEPS } from "@/lib/seed";
 import { RecordMeetings } from "@/components/home";
-import { POINTS_PER_WEEK_MET, SCORE_WEEKS, TASK_POINTS, score } from "@/lib/score";
+import { SCORE_WEEKS, score } from "@/lib/score";
 import { Avatar, Img, Meter, Sheet, Signs, first, handle } from "@/components/ui";
 
 type View = "everyone" | "leaderboard" | "up" | "dropping" | "new" | "approvals" | "meetings" | "overview";
@@ -498,10 +498,7 @@ function Leaderboard() {
   return (
     <>
       <div className="sect">
-        <div className="h-l">Leaderboard</div>
-        <p className="small muted" style={{ marginTop: 6 }}>
-          Last {SCORE_WEEKS} weeks. Finished tasks earn {TASK_POINTS.S} / {TASK_POINTS.M} / {TASK_POINTS.L} points for small / medium / large; every week at a member&apos;s own commitment earns {POINTS_PER_WEEK_MET}. Hours are judged against each tier, so GO! and Core compete fairly.
-        </p>
+        <div className="h-l">Leaderboard · last {SCORE_WEEKS} weeks</div>
       </div>
       <div className="lb">
         <div className="lb-row lb-h"><span>#</span><span>Member</span><span>Tasks</span><span>Hours</span><span>Total</span></div>
