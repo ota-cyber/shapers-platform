@@ -9,7 +9,7 @@ import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority,
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
-import { api, backendEnabled, loadDb, signInAs } from "./backend";
+import { api, backendEnabled, loadDb, signInAs, syncCalendar } from "./backend";
 
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
@@ -135,15 +135,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       signInAs(prefs.meId)
         .then(loadDb)
         .then((db) => setState({ db, prefs }))
+        .then(() => syncCalendar().then((synced) => (synced ? reload() : undefined)))
         .catch((e: Error) => setError(e.message));
     } else {
       setState(load());
     }
     const t = setInterval(() => setNow(new Date()), 15_000);
     const r = backendEnabled ? setInterval(() => void reload(), 60_000) : undefined;
+    // Meetings come from Google Calendar; refresh them every few minutes (admins only).
+    const c = backendEnabled ? setInterval(() => void syncCalendar().then((synced) => (synced ? reload() : undefined)), 5 * 60_000) : undefined;
     return () => {
       clearInterval(t);
       if (r) clearInterval(r);
+      if (c) clearInterval(c);
     };
   }, [reload]);
 

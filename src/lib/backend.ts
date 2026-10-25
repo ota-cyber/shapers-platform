@@ -52,6 +52,13 @@ export async function signInAs(handle: string): Promise<void> {
   if (r.error) throw new Error(`Sign-in as ${handle} failed: ${r.error.message}`);
 }
 
+/** Pulls meetings from Google Calendar (read only). The database lets only admins run it;
+ *  for everyone else the call is refused and ignored. */
+export async function syncCalendar(): Promise<boolean> {
+  const { error } = await sb!.functions.invoke("sync-calendar");
+  return !error;
+}
+
 // ------------------------------------------------------------------ load
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
