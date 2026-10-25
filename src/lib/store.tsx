@@ -41,6 +41,7 @@ interface Ctx {
   addTask: (t: { projectId: string; title: string; assigneeId: string | null; due: string | null; priority: Priority; status?: TaskStatus; start?: string | null; size?: TaskSize }) => void;
   moveTask: (id: string, to: { status?: TaskStatus; projectId?: string; assigneeId?: string | null }) => void;
   setTaskDates: (id: string, start: string, due: string) => void;
+  unscheduleTask: (id: string) => void;
   addProject: (p: Omit<Project, "id">) => void;
   meetingClockIn: (meetingId: string, state: "present" | "remote") => void;
   recordAttendance: (meetingId: string, memberId: string, state: AttendanceState) => void;
@@ -256,6 +257,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           t.start = start;
           t.due = due;
           t.history.push({ at: now.toISOString(), by: me.id, what: `dates ${start} → ${due}` });
+        }),
+      unscheduleTask: (id) =>
+        mutate((db) => {
+          const t = db.tasks.find((x) => x.id === id);
+          if (!t || (!t.start && !t.due)) return;
+          t.start = null;
+          t.due = null;
+          t.history.push({ at: now.toISOString(), by: me.id, what: "removed from calendar" });
         }),
       meetingClockIn: (meetingId, state) =>
         mutate((db) => setAttendance(db, meetingId, me.id, state)),

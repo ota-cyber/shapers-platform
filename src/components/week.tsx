@@ -26,6 +26,7 @@ import { taskRights } from "@/lib/permissions";
 import { ONBOARDING_STEPS } from "@/lib/seed";
 import type { Meeting, Task } from "@/lib/types";
 import { Sheet } from "./ui";
+import { TaskSheet } from "./tasks/TaskSheet";
 
 const day3 = (iso: string) => fmt.dow(iso).slice(0, 3).toLowerCase().replace(/^./, (c) => c.toUpperCase());
 
@@ -147,6 +148,7 @@ export function WeekTimeline({ memberId }: { memberId?: string }) {
   const readonly = who !== me.id;
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
+  const [openTask, setOpenTask] = useState<string | null>(null);
   const from = addDays(weekStart(today), offset * 7);
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const to = days[6];
@@ -203,14 +205,14 @@ export function WeekTimeline({ memberId }: { memberId?: string }) {
               const col = daysBetween(from, s);
               const span = daysBetween(s, e) + 1;
               return (
-                <Link
+                <button
                   key={t.id}
-                  href={`/tasks?task=${t.id}`}
+                  onClick={() => setOpenTask(t.id)}
                   className={`wk-bar ${t.status === "done" ? "is-done" : ""}`}
                   style={{ left: `calc(${(col / 7) * 100}% + 3px)`, width: `calc(${(span / 7) * 100}% - 6px)`, top: 8 + row * 34, background: projectColor(ids, t.projectId) }}
                 >
                   {t.title}
-                </Link>
+                </button>
               );
             })}
             {!tasks.length && <span className="wk-empty">{readonly ? "No tasks planned this week." : "No tasks planned this week. Drag one from Do."}</span>}
@@ -218,6 +220,7 @@ export function WeekTimeline({ memberId }: { memberId?: string }) {
         </div>
       </div>
       {open && <MeetingSheet id={open} onClose={() => setOpen(null)} />}
+      {openTask && <TaskSheet id={openTask} onClose={() => setOpenTask(null)} />}
     </section>
   );
 }
