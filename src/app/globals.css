@@ -637,7 +637,3 @@ a.lb-row:hover { background: #f1f1f1; }
 /* landing: negative space above the greeting (revertable: this block only) */
 .home .glance { padding-top: 12vh; }
 @media (min-width: 1000px) { .home .glance { padding-top: 22vh; } }
-/* landing: same vertical placement for every account, whatever the list lengths */
-.dodont.big { min-height: 168px; align-content: start; }
-.clock { min-height: 118px; justify-content: flex-start; }
-@media (min-width: 1000px) { .dodont.big { min-height: 182px; } }
