@@ -132,8 +132,11 @@ const sameOwner = await rpc(member, "update_task", { p_task: mine.id, p_patch: {
 ok(!sameOwner.ok, "member is refused even when sending their own id as assignee");
 const resize = await rpc(member, "update_task", { p_task: mine.id, p_patch: { size: "L" } });
 ok(!resize.ok, "member cannot change a task's size");
-const direct = await api(member, `/rest/v1/tasks?id=eq.${mine.id}`, { method: "PATCH", body: { project_id: project } });
-ok(!direct.ok || direct.data.length === 0 || direct.data[0].project_id !== project || false, "direct table update cannot move a task either", `${direct.status}`);
+const other = (await get(member, `projects?select=id&is_general=eq.false&id=neq.${project}&limit=1`)).data[0].id;
+const moved = await rpc(member, "update_task", { p_task: mine.id, p_patch: { project_id: other } });
+ok(moved.ok && moved.data.project_id === other, "member moves their own task to another project (2026-10-25 rule)");
+const cleared = await rpc(member, "update_task", { p_task: mine.id, p_patch: { starts_on: null, due_on: null } });
+ok(cleared.ok && cleared.data.starts_on === null && cleared.data.due_on === null, "member removes their task from the calendar");
 const othersTask = (await get(member, `tasks?select=id&assignee_id=eq.${outsider.id}&limit=1`)).data[0];
 const steal = await rpc(member, "update_task", { p_task: othersTask.id, p_patch: { status: "done" } });
 ok(!steal.ok, "member cannot change someone else's task");
