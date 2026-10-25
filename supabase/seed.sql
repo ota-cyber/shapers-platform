@@ -6,7 +6,7 @@ update public.app_settings set tracking_since = '2026-09-14', check_in_any_time 
 
 -- Members: sandbox roster + three new members onboarding (demo)
 insert into public.members (id, name, email, tier, is_admin, joined_on, tier_since, avatar, onboarding_active, needs_setup) values
-  ('cb522792-4a4f-58db-ae04-9915f5d3fce3', 'Jure Kovač', 'ana.kovac@sandbox.example', 'core', true, '2023-09-01', '2023-09-01', 'jure-kovac', false, false),
+  ('cb522792-4a4f-58db-ae04-9915f5d3fce3', 'Sofia Manzou', 'ana.kovac@sandbox.example', 'core', true, '2023-09-01', '2023-09-01', 'sofia-manzou', false, false),
   ('a41edf74-8cef-52d3-99a9-558e30dcdb55', 'Luka Novak', 'luka.novak@sandbox.example', 'core', true, '2024-01-15', '2024-01-15', 'stone', false, false),
   ('5b1c01ce-ea20-53a5-a3fc-a0be03a3e427', 'Maja Horvat', 'maja.horvat@sandbox.example', 'core', true, '2024-06-01', '2024-06-01', 'apple', false, false),
   ('d53b2d61-16c1-5e4d-a3f8-832cc7ee4bd7', 'Žiga Krajnc', 'ziga.krajnc@sandbox.example', 'impact', false, '2025-11-01', '2025-11-01', 'moon', false, false),
@@ -15,20 +15,20 @@ insert into public.members (id, name, email, tier, is_admin, joined_on, tier_sin
   ('c128f1d0-b526-502d-a437-10582a33fdff', 'Eva Vidmar', 'eva.vidmar@sandbox.example', 'impact', false, '2025-06-01', '2025-06-01', 'compass', false, false),
   ('1f3071a8-0063-541c-ad1a-e4983128daa8', 'Matic Kos', 'matic.kos@sandbox.example', 'impact', false, '2026-03-01', '2026-03-01', 'sprout', false, false),
   ('8fb3b9ee-dad4-58a0-bf12-d53e38b569cd', 'Sara Mlakar', 'sara.mlakar@sandbox.example', 'impact', false, '2026-02-01', '2026-02-01', 'book', false, false),
-  ('d7c64067-f8ae-5b77-aa6d-16a0d9ff0cd5', 'Marko Grad', 'rok.golob@sandbox.example', 'impact', false, '2025-10-01', '2025-10-01', 'marko-grad', false, false),
+  ('d7c64067-f8ae-5b77-aa6d-16a0d9ff0cd5', 'Jure Kovač', 'rok.golob@sandbox.example', 'impact', false, '2025-10-01', '2025-10-01', 'jure-kovac', false, false),
   ('16ad5dc7-10da-5820-a2cc-13ab27fb471d', 'Zala Turk', 'zala.turk@sandbox.example', 'go', false, '2026-06-01', '2026-06-01', 'bust', false, true),
   ('e42ff148-58f2-53fe-aa97-3bc38dba3c20', 'Nejc Kralj', 'nejc.kralj@sandbox.example', 'go', false, '2026-07-01', '2026-07-01', 'stone', false, true),
   ('a1d130ab-7374-50fc-ad6b-7be698cb51cb', 'Tjaša Božič', 'tjasa.bozic@sandbox.example', 'go', false, '2026-09-01', '2026-09-01', 'apple', false, false),
   ('282645b1-a94b-5d57-8a05-4fe992915b1b', 'Aljaž Hribar', 'aljaz.hribar@sandbox.example', 'go', false, '2026-05-15', '2026-05-15', 'moon', false, false),
-  ('c7bb5b0e-0e78-5349-ad20-7c4c48b906f6', 'Sofia Manzou', 'petra.jerman@sandbox.example', 'go', false, '2026-04-27', '2026-04-27', 'sofia-manzou', false, false),
+  ('c7bb5b0e-0e78-5349-ad20-7c4c48b906f6', 'Marko Grad', 'petra.jerman@sandbox.example', 'go', false, '2026-04-27', '2026-04-27', 'marko-grad', false, false),
   ('cb48bc43-01af-5961-ad2a-ee5ba64887bf', 'Blaž Bizjak', 'blaz.bizjak@sandbox.example', 'go', false, '2026-06-15', '2026-06-15', 'hands', false, false),
   ('ff267c13-8e73-5698-a396-747fd1a908bd', 'Katja Lesjak', 'katja.lesjak@sandbox.example', 'go', false, '2026-08-01', '2026-08-01', 'compass', false, false),
   ('eed113a8-5085-557c-be1c-4e061030a263', 'Urban Petek', 'urban.petek@sandbox.example', 'go', false, '2026-09-01', '2026-09-01', 'sprout', false, false),
   ('a39bd10e-1b10-5bd4-afe2-bd3ff854de74', 'Neža Oblak', 'neza.oblak@sandbox.example', 'go', false, '2026-05-01', '2026-05-01', 'book', false, false),
   ('38ebe4ef-de8c-5333-8009-b5045a11baaf', 'Filip Rozman', 'filip.rozman@sandbox.example', 'go', false, '2026-07-15', '2026-07-15', 'key', false, false),
-  ('c4e7e6f6-7f42-5632-8965-6e7eb719bd20', 'Vid Kovač', 'lea.zorman@sandbox.example', 'go', false, '2026-10-12', '2026-10-12', 'vid-kovac', true, false),
+  ('c4e7e6f6-7f42-5632-8965-6e7eb719bd20', 'Nik Slobodjanac', 'lea.zorman@sandbox.example', 'go', false, '2026-10-12', '2026-10-12', 'nik-slobodjanac', true, false),
   ('0e8119c2-103c-5de0-89e1-fcb991ead162', 'Tim Vrhovnik', 'tim.vrhovnik@sandbox.example', 'go', false, '2026-10-19', '2026-10-19', 'key', true, false),
-  ('eb97812f-89a1-5867-bfb0-173cb63cbaeb', 'Nik Slobodjanac', 'mia.kranjc@sandbox.example', 'go', false, '2026-09-28', '2026-09-28', 'nik-slobodjanac', true, false);
+  ('eb97812f-89a1-5867-bfb0-173cb63cbaeb', 'Vid Kovač', 'mia.kranjc@sandbox.example', 'go', false, '2026-09-28', '2026-09-28', 'vid-kovac', true, false);
 update public.members set buddy_id = 'd7c64067-f8ae-5b77-aa6d-16a0d9ff0cd5' where id = '16ad5dc7-10da-5820-a2cc-13ab27fb471d';
 update public.members set buddy_id = '221bb740-0d80-52d5-b7ef-14b0aa12d8de' where id = 'e42ff148-58f2-53fe-aa97-3bc38dba3c20';
 update public.members set buddy_id = 'a41edf74-8cef-52d3-99a9-558e30dcdb55' where id = 'a1d130ab-7374-50fc-ad6b-7be698cb51cb';

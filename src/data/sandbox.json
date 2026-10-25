@@ -2,7 +2,7 @@
  "members": [
   {
    "id": "ana.kovac",
-   "name": "Jure Kovač",
+   "name": "Sofia Manzou",
    "email": "ana.kovac@sandbox.example",
    "tier": "Core",
    "weeklyHours": 70.0,
@@ -122,7 +122,7 @@
   },
   {
    "id": "rok.golob",
-   "name": "Marko Grad",
+   "name": "Jure Kovač",
    "email": "rok.golob@sandbox.example",
    "tier": "Impact",
    "weeklyHours": 10.0,
@@ -183,7 +183,7 @@
   },
   {
    "id": "petra.jerman",
-   "name": "Sofia Manzou",
+   "name": "Marko Grad",
    "email": "petra.jerman@sandbox.example",
    "tier": "GO!",
    "weeklyHours": 4.0,

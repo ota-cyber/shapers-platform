@@ -32,7 +32,7 @@ export default function Onboarding() {
 
 const reduceMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const stage = () => document.querySelector<HTMLElement>(".ob-stage");
-const BLOCKS = "h1, h2, p, img, .mono-lc, .btn, .choices > *, .rows > *, .card, .cards > *, .hero-img";
+const BLOCKS = "h1, h2, p, img, .mono-lc, .btn, .link, .choices > *, .rows > *, .compat > li, .ptable, .ob-card, .card, .cards > *, .hero-img";
 
 /** The outermost animatable blocks of the current screen (never a block inside another). */
 function blocks(root: HTMLElement): HTMLElement[] {
@@ -61,10 +61,15 @@ function playIn(root: HTMLElement, welcome: boolean) {
   const title = root.querySelector<HTMLElement>("h1");
   const rest = blocks(root).filter((el) => el !== title);
   const head = root.querySelector(".mhead");
+  const bar = root.querySelector<HTMLElement>(".ob-progress span");
+  const dark = root.querySelector(".void");
   // Clear anything the previous screen's exit left on reused elements.
   gsap.set([title, ...rest].filter(Boolean), { clearProps: "opacity,visibility,transform,filter" });
   const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+  // The dark screen fades in over the light stage instead of cutting to it.
+  if (dark) tl.fromTo(dark, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 0);
   if (head) tl.fromTo(head, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 0);
+  if (bar) tl.fromTo(bar, { scaleX: Number(bar.dataset.from) }, { scaleX: Number(bar.dataset.to), duration: 0.9, ease: "power3.inOut" }, 0.1);
   if (title) {
     const parts = title.querySelectorAll(welcome ? ".ob-c" : ".ob-w");
     tl.fromTo(
@@ -77,7 +82,8 @@ function playIn(root: HTMLElement, welcome: boolean) {
   tl.fromTo(
     rest,
     { autoAlpha: 0, y: 28, filter: "blur(10px)" },
-    { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 1, stagger: 0.09 },
+    // Long lists (projects, tiers) share the same total stagger, so the button never arrives late.
+    { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 1, stagger: Math.min(0.09, 0.8 / Math.max(rest.length, 1)) },
     welcome ? 0.7 : 0.35,
   );
 }
@@ -85,10 +91,11 @@ function playIn(root: HTMLElement, welcome: boolean) {
 function playOut(done: () => void) {
   const root = stage();
   if (!root || reduceMotion()) return done();
-  gsap.to(blocks(root), {
-    autoAlpha: 0, y: -18, filter: "blur(8px)", duration: 0.35, stagger: 0.02, ease: "power2.in",
-    onComplete: done,
-  });
+  const tl = gsap.timeline({ onComplete: done });
+  tl.to(blocks(root), { autoAlpha: 0, y: -18, filter: "blur(8px)", duration: 0.35, stagger: 0.02, ease: "power2.in" }, 0);
+  // Leaving the dark screen: its background dissolves into the light stage.
+  const dark = root.querySelector(".void");
+  if (dark) tl.to(dark, { autoAlpha: 0, duration: 0.45, ease: "power2.inOut" }, 0.15);
 }
 
 function OnboardingFlow() {
@@ -114,15 +121,15 @@ function OnboardingFlow() {
   }, [finished, refresher, finishOnboardingFlow]);
   const screen: Screen = SCREENS[i];
   const leaving = useRef(false);
-  const next = () => {
+  const leave = (then: () => void) => {
     if (leaving.current) return;
     leaving.current = true;
     playOut(() => {
       leaving.current = false;
-      if (i < SCREENS.length - 1) setI(i + 1);
-      else setFinished(true);
+      then();
     });
   };
+  const next = () => leave(() => (i < SCREENS.length - 1 ? setI(i + 1) : setFinished(true)));
   // Every new screen (and the closing one) animates in from the top of the stage.
   const step = finished ? "finished" : `${screen}${replay ? "" : "-"}`;
   useLayoutEffect(() => {
@@ -137,11 +144,17 @@ function OnboardingFlow() {
   const buddy = member(me.buddyId);
 
   const top = (
-    <div className="mhead" style={{ background: "transparent", borderBottom: 0 }}>
-      <button className="side mono" onClick={() => router.push("/")} style={{ color: screen === "project" ? "#ddd" : "var(--text)" }}>Close</button>
-      <span className="mono-lc" style={{ textAlign: "center", color: screen === "project" ? "#eee" : "var(--ink)" }}>Step {i + 1} of {SCREENS.length}</span>
-      <button className="side mono" onClick={next} style={{ color: screen === "project" ? "#ddd" : "var(--text)" }}>Skip</button>
-    </div>
+    <>
+      <div className="mhead" style={{ background: "transparent", borderBottom: 0 }}>
+        <span />
+        <span className="mono-lc" style={{ textAlign: "center", color: screen === "project" ? "#eee" : "var(--ink)" }}>Step {i + 1} of {SCREENS.length}</span>
+        <span />
+      </div>
+      {/* Progress grows from the previous step to this one as the screen comes in. */}
+      <div className="ob-progress" style={{ color: screen === "project" ? "#eee" : "var(--ink)" }}>
+        <span data-from={i / SCREENS.length} data-to={(i + 1) / SCREENS.length} style={{ transform: `scaleX(${(i + 1) / SCREENS.length})` }} />
+      </div>
+    </>
   );
 
   const Frame = ({ label, title, img, children, cta, onCta, alt = "Not right now" }: { label: string; title: string; img?: string; children?: React.ReactNode; cta: string; onCta: () => void; alt?: string | null }) => (
@@ -206,7 +219,7 @@ function OnboardingFlow() {
           <p className="small" style={{ marginTop: 10 }}>Each one asks a little more and trusts you a little more.</p>
         </div>
         <TiersTable current={me.tier} />
-        <div style={{ padding: "22px var(--gutter)" }}><TierRules tier={me.tier} /></div>
+        <div className="ob-card" style={{ padding: "22px var(--gutter)" }}><TierRules tier={me.tier} /></div>
         <p className="small center pad">After six months in GO!, leadership looks at your hours, attendance and initiative. Your home screen will show where you stand.</p>
         <div className="center" style={{ padding: "26px 0 40px" }}><button className="btn" onClick={() => { mark("tiers"); next(); }}>Got it</button></div>
       </div>
@@ -245,7 +258,7 @@ function OnboardingFlow() {
     return (
       <Frame label="Your buddy" title={buddy ? `Meet ${first(buddy)}. Twenty minutes, every week.` : "Your buddy is on the way."} cta={buddy ? "We've met" : "Continue"} onCta={() => { if (buddy) mark("buddy"); next(); }}>
         {buddy && (
-          <div style={{ border: "1px solid var(--line-strong)", background: "var(--paper)", marginTop: 26 }}>
+          <div className="ob-card" style={{ border: "1px solid var(--line-strong)", background: "var(--paper)", marginTop: 26 }}>
             <div className="phead">
               <Avatar m={buddy} />
               <div className="grow">
@@ -287,10 +300,10 @@ function OnboardingFlow() {
       cta={refresher || done["first-hour"] || db.sessions.some((x) => x.memberId === me.id) ? "Finish" : "Clock in now"}
       onCta={() => {
         if (!refresher && !done["first-hour"] && !db.sessions.some((x) => x.memberId === me.id)) clockIn(null);
-        setFinished(true);
+        leave(() => setFinished(true));
       }}
     >
-      <div style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
+      <div className="ob-card" style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
         {[
           ["now", "Your week at a glance", `${standingOf(me.id).toKeep ? `${standingOf(me.id).toKeep} h to keep GO! this week.` : "Your week is made."}`],
           ["Yesterday", "One hour, counted", "Tap Clock in and an hour is on your week. Still here after it? Tap again."],

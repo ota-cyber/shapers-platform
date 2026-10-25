@@ -4,12 +4,15 @@
 // not on the roster. Members sign in with Google; the demo people sign in with
 // the demo password so anyone can try the platform.
 
+import { Img } from "@/components/ui";
+
+// Names and avatars match the members table (supabase/seed.sql).
 const DEMO = [
-  { id: "petra.jerman", label: "Sofia", line: "GO! member, close to Impact" },
-  { id: "lea.zorman", label: "Vid", line: "New, onboarding" },
-  { id: "mia.kranjc", label: "Nik", line: "New, ready to graduate" },
-  { id: "rok.golob", label: "Marko", line: "Impact, buddy of new members" },
-  { id: "ana.kovac", label: "Jure", line: "Admin" },
+  { id: "petra.jerman", label: "Marko Grad", avatar: "marko-grad", line: "GO! member, close to Impact" },
+  { id: "lea.zorman", label: "Nik Slobodjanac", avatar: "nik-slobodjanac", line: "New, onboarding" },
+  { id: "mia.kranjc", label: "Vid Kovač", avatar: "vid-kovac", line: "New, ready to graduate" },
+  { id: "rok.golob", label: "Jure Kovač", avatar: "jure-kovac", line: "Impact, buddy of new members" },
+  { id: "ana.kovac", label: "Sofia Manzou", avatar: "sofia-manzou", line: "Admin" },
 ];
 
 export function SignIn(props: {
@@ -65,12 +68,13 @@ export function SignIn(props: {
         {props.error && <p className="mono-lc" style={{ color: "var(--ink)", marginTop: 16 }}>{props.error}</p>}
 
         <div className="mono" style={{ color: "var(--muted)", margin: "44px 0 12px" }}>Or try the demo as</div>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {DEMO.map((d) => (
-            <button key={d.id} className="btn outline block" disabled={props.busy} onClick={() => props.onDemo(d.id)}
-              style={{ display: "flex", justifyContent: "space-between", gap: 12, textAlign: "left" }}>
-              <span>{d.label}</span>
-              <span className="mono-lc" style={{ opacity: 0.7 }}>{d.line}</span>
+            <button key={d.id} disabled={props.busy} onClick={() => props.onDemo(d.id)}
+              style={{ display: "grid", justifyItems: "center", alignContent: "start", gap: 10, padding: "20px 12px 18px", border: "1px solid var(--line-strong)", background: "var(--paper)", textAlign: "center", cursor: "pointer" }}>
+              <span className="avatar" style={{ width: 96, height: 96 }}><Img name={d.avatar} alt="" /></span>
+              <span className="serif" style={{ fontSize: 20, lineHeight: 1.15 }}>{d.label}</span>
+              <span className="mono-lc" style={{ color: "var(--muted)" }}>{d.line}</span>
             </button>
           ))}
         </div>

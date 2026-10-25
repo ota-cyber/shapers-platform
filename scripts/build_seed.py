@@ -63,22 +63,22 @@ ALL_STEPS = ["values", "tiers", "contract", "email", "slack", "calendar", "buddy
 
 # New members, onboarding now. progress = date of their latest ticked step.
 NEW_MEMBERS = [
-    # stalled: his buddy Marko gets the nudge
-    {"handle": "lea.zorman", "name": "Vid Kovač", "series": ["Shapers Tech"], "joined": "2026-10-12",
-     "avatar": "vid-kovac", "steps": ["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"],
+    # stalled: his buddy Jure gets the nudge
+    {"handle": "lea.zorman", "name": "Nik Slobodjanac", "series": ["Shapers Tech"], "joined": "2026-10-12",
+     "avatar": "nik-slobodjanac", "steps": ["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"],
      "progress": "2026-10-14"},
     {"handle": "tim.vrhovnik", "name": "Tim Vrhovnik", "series": ["Grants"], "joined": "2026-10-19",
      "avatar": "key", "steps": ["values", "tiers"], "progress": "2026-10-21"},
-    # every step done: his buddy Marko can propose ending onboarding
-    {"handle": "mia.kranjc", "name": "Nik Slobodjanac", "series": ["Shape Talks"], "joined": "2026-09-28",
-     "avatar": "nik-slobodjanac", "steps": ALL_STEPS, "progress": "2026-10-22"},
+    # every step done: his buddy Jure can propose ending onboarding
+    {"handle": "mia.kranjc", "name": "Vid Kovač", "series": ["Shape Talks"], "joined": "2026-09-28",
+     "avatar": "vid-kovac", "steps": ALL_STEPS, "progress": "2026-10-22"},
 ]
 
 # Display-name changes to the sandbox roster (emails stay, so calendar and attendance still match).
-NAME_OVERRIDES = {"ana.kovac": "Jure Kovač", "rok.golob": "Marko Grad", "petra.jerman": "Sofia Manzou"}
+NAME_OVERRIDES = {"ana.kovac": "Sofia Manzou", "rok.golob": "Jure Kovač", "petra.jerman": "Marko Grad"}
 
 # Statue portraits for the demo people (public/img); everyone else gets an object.
-AVATAR_OVERRIDES = {"ana.kovac": "jure-kovac", "rok.golob": "marko-grad", "petra.jerman": "sofia-manzou"}
+AVATAR_OVERRIDES = {"ana.kovac": "sofia-manzou", "rok.golob": "jure-kovac", "petra.jerman": "marko-grad"}
 
 # Members who joined before the platform and are still on their setup steps.
 SETUP = {"zala.turk": ["confirm-tier"], "nejc.kralj": []}

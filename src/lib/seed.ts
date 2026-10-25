@@ -7,7 +7,7 @@ import { addDays } from "./dates";
 import type { Db, Member, OnboardingStepId, Project, Series, SetupStepId, Task, TaskStatus, Priority } from "./types";
 
 // Statue portraits for the demo people; everyone else gets an object.
-const AVATAR_OVERRIDES: Record<string, string> = { "ana.kovac": "jure-kovac", "rok.golob": "marko-grad", "petra.jerman": "sofia-manzou" };
+const AVATAR_OVERRIDES: Record<string, string> = { "ana.kovac": "sofia-manzou", "rok.golob": "jure-kovac", "petra.jerman": "marko-grad" };
 const AVATARS = ["bust", "stone", "apple", "moon", "dove", "hands", "compass", "sprout", "book", "key"];
 
 // Join and tier dates are not in the sandbox; these are plausible seeds.
@@ -32,11 +32,11 @@ const done = <K extends string>(ids: K[]) => Object.fromEntries(ids.map((i) => [
 
 const NEW_MEMBERS: Member[] = [
   {
-    id: "lea.zorman", name: "Vid Kovač", email: "lea.zorman@sandbox.example", tier: "GO!", weeklyHours: 4,
+    id: "lea.zorman", name: "Nik Slobodjanac", email: "lea.zorman@sandbox.example", tier: "GO!", weeklyHours: 4,
     admin: false, series: ["Community", "Shapers Tech"], joined: "2026-10-12", tierSince: "2026-10-12",
     buddyId: "rok.golob", avatar: "vid-kovac", seeded: true,
     onboarding: done(["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"]),
-    onboardingProgressAt: "2026-10-14", // stalled: his buddy Marko gets the nudge
+    onboardingProgressAt: "2026-10-14", // stalled: his buddy Jure gets the nudge
   },
   {
     id: "tim.vrhovnik", name: "Tim Vrhovnik", email: "tim.vrhovnik@sandbox.example", tier: "GO!", weeklyHours: 4,
@@ -46,10 +46,10 @@ const NEW_MEMBERS: Member[] = [
     onboardingProgressAt: "2026-10-21",
   },
   {
-    id: "mia.kranjc", name: "Nik Slobodjanac", email: "mia.kranjc@sandbox.example", tier: "GO!", weeklyHours: 4,
+    id: "mia.kranjc", name: "Vid Kovač", email: "mia.kranjc@sandbox.example", tier: "GO!", weeklyHours: 4,
     admin: false, series: ["Community", "Shape Talks"], joined: "2026-09-28", tierSince: "2026-09-28",
     buddyId: "rok.golob", avatar: "nik-slobodjanac", seeded: true,
-    // every step done: his buddy Marko can propose ending onboarding
+    // every step done: his buddy Jure can propose ending onboarding
     onboarding: done(["values", "tiers", "contract", "email", "slack", "calendar", "buddy", "project", "first-hour", "first-task", "first-meeting"]),
     onboardingProgressAt: "2026-10-22",
   },

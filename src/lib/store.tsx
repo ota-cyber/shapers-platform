@@ -15,7 +15,7 @@ import { flowDone } from "./onboarding";
 import { api, backendEnabled, loadDb, myHandle, onActivity, onTaskDone, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
-const KEY = "shapers-ui-v6";
+const KEY = "shapers-ui-v7";
 const PREFS_KEY = "shapers-ui-prefs";
 const INTRO_KEY = "shapers-intro-played";
 const LAST_HOUR_KEY = "shapers-last-hour";

@@ -48,8 +48,8 @@ const goMember = by("petra.jerman");   // GO!, has tasks, buddy Jan
 const buddy = all.find((m) => m.id === goMember.buddy_id);
 const admin = by("ana.kovac");         // admin (and Core)
 const outsider = by("matic.kos");      // Impact, not related to Petra
-const newbie = by("lea.zorman");       // onboarding, stalled, buddy Marko (shown as Vid)
-const mia = by("mia.kranjc");          // onboarding, every step done, buddy Marko (shown as Nik)
+const newbie = by("lea.zorman");       // onboarding, stalled, buddy Rok (shown as Nik, buddy shown as Jure)
+const mia = by("mia.kranjc");          // onboarding, every step done, buddy Rok (shown as Vid, buddy shown as Jure)
 const rok = by("rok.golob");
 const setupMember = by("zala.turk");   // imported, on setup steps
 

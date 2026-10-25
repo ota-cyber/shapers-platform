@@ -15,11 +15,11 @@ const NAV = [
 ];
 
 const DEMO_PEOPLE = [
-  { id: "petra.jerman", label: "Sofia · GO!" },
-  { id: "lea.zorman", label: "Vid · new" },
-  { id: "mia.kranjc", label: "Nik · ready" },
-  { id: "rok.golob", label: "Marko · Impact" },
-  { id: "ana.kovac", label: "Jure · admin" },
+  { id: "petra.jerman", label: "Marko · GO!" },
+  { id: "lea.zorman", label: "Nik · new" },
+  { id: "mia.kranjc", label: "Vid · ready" },
+  { id: "rok.golob", label: "Jure · Impact" },
+  { id: "ana.kovac", label: "Sofia · admin" },
 ];
 
 export function Wordmark() {
