@@ -47,7 +47,7 @@ function You() {
 }
 
 function Settings() {
-  const { me, member, prefs, setPrefs, reset, db, today, requestPause, setupDone } = useApp();
+  const { me, member, prefs, setPrefs, reset, db, today, requestPause, setupDone, authEmail, signOut } = useApp();
   const buddy = member(me.buddyId);
   const [pause, setPause] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -74,6 +74,15 @@ function Settings() {
         <Link href="/you"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
       </div>
+      {authEmail && (
+        <>
+          <div className="group-h">Account</div>
+          <div className="rows">
+            <div><span className="k">Signed in as</span><span className="v">{authEmail}</span></div>
+            <button onClick={signOut} style={{ width: "100%" }}><span className="k" style={{ textAlign: "left" }}>Sign out</span><span className="go">→</span></button>
+          </div>
+        </>
+      )}
       <div className="group-h">Demo</div>
       <div className="rows">
         <label style={{ width: "100%" }}>

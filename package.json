@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
-    "next": "15.5.4",
+    "@supabase/supabase-js": "^2.118.0",
+    "next": "^15.5.28",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -21,7 +22,7 @@
     "@types/react-dom": "^19",
     "esbuild": "^0.24.2",
     "eslint": "^9",
-    "eslint-config-next": "15.5.4",
+    "eslint-config-next": "^15.5.28",
     "typescript": "^5"
   }
 }

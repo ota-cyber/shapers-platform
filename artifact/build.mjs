@@ -36,7 +36,14 @@ const res = await build({
   format: "iife",
   jsx: "automatic",
   target: "es2020",
-  define: { "process.env.NODE_ENV": '"production"' },
+  // The preview runs without Supabase: demo mode on the sandbox data.
+  define: {
+    "process.env.NODE_ENV": '"production"',
+    "process.env.NEXT_PUBLIC_SUPABASE_URL": "undefined",
+    "process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": "undefined",
+    "process.env.NEXT_PUBLIC_DEMO_PASSWORD": "undefined",
+    "process.env.NEXT_PUBLIC_DEMO_EMAIL_DOMAIN": "undefined",
+  },
   plugins: [shims],
   logLevel: "error",
 });
