@@ -10,6 +10,7 @@ import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority,
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, tierRule, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
+import { flowDone } from "./onboarding";
 import { api, backendEnabled, loadDb, myHandle, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
@@ -45,7 +46,7 @@ interface Ctx {
   declineJoin: (id: string) => void;
   /** The onboarding screens are done (backend mode: adds the starter history). */
   finishOnboardingFlow: () => void;
-  /** A GO! member just signed in: the onboarding plays from its first screen. */
+  /** A new member who hasn't finished onboarding just signed in: the onboarding plays from its first screen. */
   playIntro: boolean;
   introPlayed: () => void;
   clockIn: (taskId: string | null) => void;
@@ -117,6 +118,19 @@ function load(): { db: Db; prefs: Prefs } {
   return fresh;
 }
 
+/** Which onboarding steps a member has done: ticked ones plus those that follow from activity. */
+function onboardingStepsDone(db: Db, m: Member): Record<OnboardingStepId, boolean> {
+  const auto: Partial<Record<OnboardingStepId, boolean>> = {
+    "first-hour": db.hours.some((h) => h.memberId === m.id && h.hours > 0),
+    "first-task": db.tasks.some((t) => t.assigneeId === m.id && t.status === "done"),
+    "first-meeting": db.attendance.some((a) => a.memberId === m.id && (a.state === "present" || a.state === "remote")),
+    project: db.tasks.some((t) => t.assigneeId === m.id),
+  };
+  return Object.fromEntries(
+    ONBOARDING_STEPS.map((s) => [s.id, !!(m.onboarding?.[s.id] || auto[s.id])]),
+  ) as Record<OnboardingStepId, boolean>;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{ db: Db; prefs: Prefs } | null>(null);
   const [now, setNow] = useState(() => new Date());
@@ -125,15 +139,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
   const [busy, setBusy] = useState(false);
   const router = useRouter();
-  // Every sign-in as a GO! member plays the onboarding from the start (demo rule, 2026-10-25).
+  // A new member's every sign-in plays the onboarding from the start until they finish it.
   // Once per sign-in per tab: a reload doesn't replay it, signing in again does.
   const [playIntro, setPlayIntro] = useState(false);
   const maybePlayIntro = useCallback(
     (db: Db, handle: string) => {
+      // New members only, on every sign-in until they finish the onboarding screens
+      // (Jure, 2026-10-25). Existing members never get it automatically.
       const m = db.members.find((x) => x.id === handle);
       let played: string | null = null;
       try { played = sessionStorage.getItem(INTRO_KEY); } catch {}
-      if (m?.tier !== "GO!" || played === handle) return;
+      if (!m || m.onboarding === null || flowDone(onboardingStepsDone(db, m)) || played === handle) return;
       try { sessionStorage.setItem(INTRO_KEY, handle); } catch {}
       setPlayIntro(true);
       router.replace("/onboarding");
@@ -262,17 +278,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const realLive = upcoming.find((m) => new Date(m.start) <= now && m.memberIds.includes(me.id));
     const liveMeetingId = realLive?.id ?? (prefs.liveMeeting ? (upcoming.find((m) => m.memberIds.includes(me.id))?.id ?? null) : null);
 
-    const onboardingDone = (m: Member) => {
-      const auto: Partial<Record<OnboardingStepId, boolean>> = {
-        "first-hour": db.hours.some((h) => h.memberId === m.id && h.hours > 0),
-        "first-task": db.tasks.some((t) => t.assigneeId === m.id && t.status === "done"),
-        "first-meeting": db.attendance.some((a) => a.memberId === m.id && (a.state === "present" || a.state === "remote")),
-        project: db.tasks.some((t) => t.assigneeId === m.id),
-      };
-      return Object.fromEntries(
-        ONBOARDING_STEPS.map((s) => [s.id, !!(m.onboarding?.[s.id] || auto[s.id])]),
-      ) as Record<OnboardingStepId, boolean>;
-    };
+    const onboardingDone = (m: Member) => onboardingStepsDone(db, m);
     const setupDone = (m: Member) => {
       if (!m.setup) return null;
       const firstHour = db.hours.some((h) => h.memberId === m.id && h.hours > 0) || db.sessions.some((x) => x.memberId === m.id);
@@ -506,7 +512,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPrefs: (p) => {
         base.setPrefs(p);
         if (p.meId && p.meId !== prefs.meId) {
-          // Switching person is a new sign-in: start() reloads and plays the intro for GO! members.
+          // Switching person is a new sign-in: start() reloads and plays the intro for new members.
           try { sessionStorage.removeItem(INTRO_KEY); } catch {}
           signInAs(p.meId).then(start).catch((e: Error) => setError(e.message));
         }
