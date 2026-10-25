@@ -9,7 +9,8 @@ import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority,
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
-import { api, backendEnabled, loadDb, signInAs, syncCalendar } from "./backend";
+import { api, backendEnabled, loadDb, myHandle, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
+import { SignIn } from "@/components/SignIn";
 
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
@@ -35,6 +36,9 @@ interface Ctx {
   stillWorkingDue: boolean;
   setPrefs: (p: Partial<Prefs>) => void;
   reset: () => void;
+  /** Signed-in email in backend mode (Google or demo); null in local demo mode. */
+  authEmail: string | null;
+  signOut: () => void;
   clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
   clockOut: () => void;
@@ -108,6 +112,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{ db: Db; prefs: Prefs } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
+  // Backend mode only: who is signed in. "signed-out" and "not-member" show the sign-in screen.
+  const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
+  const [busy, setBusy] = useState(false);
 
   // Backend mode: the database is the truth. Reload after every write and every minute.
   const reload = useCallback(() => {
@@ -129,14 +136,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [reload],
   );
 
+  /** Signs whoever is signed in into the app: their roster member becomes "me". */
+  const start = useCallback(async () => {
+    try {
+      const email = await sessionEmail();
+      if (!email) return setAuth({ status: "signed-out", email: null });
+      const handle = await myHandle(email);
+      if (!handle) return setAuth({ status: "not-member", email });
+      const db = await loadDb();
+      setState({ db, prefs: { ...loadPrefs(), meId: handle } });
+      setAuth({ status: "ready", email });
+      if (await syncCalendar()) void reload();
+    } catch (e) {
+      setError((e as Error).message);
+      setAuth({ status: "signed-out", email: null });
+    }
+  }, [reload]);
+
+  const demoSignIn = useCallback(
+    (handle: string) => {
+      setBusy(true);
+      setError(null);
+      signInAs(handle).then(start).catch((e: Error) => setError(e.message)).finally(() => setBusy(false));
+    },
+    [start],
+  );
+
+  const doSignOut = useCallback(() => {
+    void signOut().then(() => {
+      setState(null);
+      setAuth({ status: "signed-out", email: null });
+    });
+  }, []);
+
   useEffect(() => {
     if (backendEnabled) {
-      const prefs = loadPrefs();
-      signInAs(prefs.meId)
-        .then(loadDb)
-        .then((db) => setState({ db, prefs }))
-        .then(() => syncCalendar().then((synced) => (synced ? reload() : undefined)))
-        .catch((e: Error) => setError(e.message));
+      void start();
     } else {
       setState(load());
     }
@@ -149,7 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (r) clearInterval(r);
       if (c) clearInterval(c);
     };
-  }, [reload]);
+  }, [reload, start]);
 
   useEffect(() => {
     if (!state) return;
@@ -222,6 +257,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const base: Ctx = {
       db,
       prefs,
+      authEmail: null,
+      signOut: () => {},
       now,
       today,
       me,
@@ -415,9 +452,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Backend mode: every action still updates the screen at once, then goes to the
     // database, which enforces the rules; the reload afterwards shows the true state.
     const overrides: Partial<Ctx> = {
+      authEmail: auth.email,
+      signOut: doSignOut,
+      // "View as" signs in as that demo member (it ends a Google session).
       setPrefs: (p) => {
         base.setPrefs(p);
-        if (p.meId && p.meId !== prefs.meId) signInAs(p.meId).then(reload).catch((e: Error) => setError(e.message));
+        if (p.meId && p.meId !== prefs.meId) {
+          signInAs(p.meId)
+            .then(() => setAuth((a) => ({ ...a, email: `${p.meId}@sandbox.example` })))
+            .then(reload)
+            .catch((e: Error) => setError(e.message));
+        }
       },
       reset: () => void reload(),
       clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
@@ -469,8 +514,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
     };
     return { ...base, ...overrides };
-  }, [state, now, mutate, remote, reload]);
+  }, [state, now, mutate, remote, reload, auth.email, doSignOut]);
 
+  if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
+    return (
+      <SignIn
+        notMemberEmail={auth.status === "not-member" ? auth.email : null}
+        busy={busy}
+        error={error}
+        onGoogle={() => {
+          setBusy(true);
+          signInWithGoogle().catch((e: Error) => { setError(e.message); setBusy(false); });
+        }}
+        onDemo={demoSignIn}
+        onSignOut={doSignOut}
+      />
+    );
+  }
   if (!value) return error ? <div className="boot backend-error">{error}</div> : <div className="boot" />;
   return (
     <AppCtx.Provider value={value}>

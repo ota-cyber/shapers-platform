@@ -43,6 +43,29 @@ function must<T>(r: { data: T | null; error: { message: string } | null }): T {
 
 // ------------------------------------------------------------------ sign-in
 
+export const isDemoEmail = (email: string) => email.endsWith(`@${DEMO_DOMAIN}`);
+
+/** Email of the signed-in person, or null. Also finishes a Google sign-in on return from Google. */
+export async function sessionEmail(): Promise<string | null> {
+  const { data } = await sb!.auth.getSession();
+  return data.session?.user.email ?? null;
+}
+
+/** The roster handle of the signed-in person; null when their email is not on the roster. */
+export async function myHandle(email: string): Promise<string | null> {
+  const { data } = await sb!.from("members").select("handle").eq("email", email.toLowerCase()).maybeSingle();
+  return data?.handle ?? null;
+}
+
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await sb!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+  if (error) throw new Error(error.message);
+}
+
+export async function signOut(): Promise<void> {
+  await sb!.auth.signOut();
+}
+
 export async function signInAs(handle: string): Promise<void> {
   const email = `${handle}@${DEMO_DOMAIN}`;
   const { data } = await sb!.auth.getSession();

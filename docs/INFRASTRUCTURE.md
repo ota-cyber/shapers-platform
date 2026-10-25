@@ -68,7 +68,12 @@ Needs: Node 18+, the [Supabase CLI](https://supabase.com/docs/guides/cli), a Sup
    (writes test data; run it on a fresh project or skip it).
 5. **Frontend.** Import the repository into Vercel (framework: Next.js, defaults are fine) and set
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_DEMO_PASSWORD`. Deploy.
-   For Google sign-in, enable Google under Supabase → Authentication → Providers and add the site URL.
+6. **Google sign-in.** In Google Cloud → APIs & Services → Credentials, create an **OAuth client ID** (Web application)
+   with the authorised redirect URI `https://<project-ref>.supabase.co/auth/v1/callback` (OAuth consent screen: External,
+   scopes email and profile only, published). In Supabase → Authentication → Sign In / Providers → Google, paste the
+   client ID and secret. In Supabase → Authentication → URL Configuration, set the Site URL to the Vercel URL and add it
+   to the redirect URLs. A Google account signs in as the member with the same email; an admin adds new people in
+   Team → Quick add. The demo people sign in with the demo password from the sign-in screen.
 
 ## Local development
 
