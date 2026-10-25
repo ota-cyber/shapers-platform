@@ -285,6 +285,10 @@ export const api = {
   setTier: (memberId: string, tier: TierId) => rpc("set_tier", { p_member: memberUuid(memberId), p_tier: TIER_KEY[tier] }),
   addMember: (m: { name: string; email: string; buddyId: string | null; series: Series[] }) =>
     rpc("add_member", { p_name: m.name, p_email: m.email, p_buddy: memberUuid(m.buddyId), p_series: m.series.map((s) => SERIES_ID[s]) }),
+  // Push notifications (docs/NOTIFICATIONS.md): one row per device; categories are the person's switches.
+  savePushSubscription: (sub: PushSubscriptionJSON, categories: Record<string, boolean>) =>
+    rpc("save_push_subscription", { p_subscription: sub, p_categories: categories }),
+  deletePushSubscription: (endpoint: string) => rpc("delete_push_subscription", { p_endpoint: endpoint }),
   importRoster: (rows: { name: string; email: string; tier: TierId; tierSince?: string }[]) =>
     rpc("import_roster", { p_rows: rows.map((r) => ({ name: r.name, email: r.email, tier: TIER_KEY[r.tier], tier_since: r.tierSince ?? null })) }),
 };

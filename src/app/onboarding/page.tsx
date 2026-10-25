@@ -12,6 +12,7 @@ import Link from "next/link";
 import { SCREENS, firstOpenScreen, flowDone, type Screen } from "@/lib/onboarding";
 import { nextMeeting } from "@/lib/copy";
 import { fmt } from "@/lib/dates";
+import { TurnOnButton } from "@/components/notify";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -196,6 +197,9 @@ export default function Onboarding() {
             </div>
           </div>
         ))}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 18 }}>
+        <TurnOnButton />
       </div>
     </Frame>
   );

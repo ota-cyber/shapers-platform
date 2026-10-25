@@ -6,6 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
+import type { NotifyCategory } from "./notifications";
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
@@ -15,6 +16,7 @@ import { SignIn } from "@/components/SignIn";
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
+export const DEFAULT_NOTIFY: Record<NotifyCategory, boolean> = { hours: true, meetings: true, tasks: true, onboarding: true, admin: true };
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -22,6 +24,8 @@ interface Prefs {
   meId: string;
   /** demo switch: treat the next meeting as live so meeting clock-in can be shown */
   liveMeeting: boolean;
+  /** push notification switches per category (sent to the backend with the device subscription) */
+  notify?: Record<NotifyCategory, boolean>;
 }
 
 interface Ctx {

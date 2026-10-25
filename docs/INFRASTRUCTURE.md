@@ -42,6 +42,8 @@ Nothing writes to Google Calendar or Slack.
 | `DEMO_PASSWORD` | scripts | Password given to every sandbox sign-in |
 | `GOOGLE_CALENDAR_ID` | Edge Function secret | Calendar ID of the imported sandbox calendar |
 | `GOOGLE_API_KEY` | Edge Function secret | Google Cloud API key with the Calendar API enabled |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | frontend (Vercel) | Web Push public key; see [NOTIFICATIONS.md](NOTIFICATIONS.md) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Edge Function secrets | Web Push signing for `send-notifications` |
 
 Without `NEXT_PUBLIC_SUPABASE_URL` the web app runs on built-in demo data in the browser.
 

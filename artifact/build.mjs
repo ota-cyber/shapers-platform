@@ -43,6 +43,7 @@ const res = await build({
     "process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": "undefined",
     "process.env.NEXT_PUBLIC_DEMO_PASSWORD": "undefined",
     "process.env.NEXT_PUBLIC_DEMO_EMAIL_DOMAIN": "undefined",
+    "process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY": "undefined",
   },
   plugins: [shims],
   logLevel: "error",

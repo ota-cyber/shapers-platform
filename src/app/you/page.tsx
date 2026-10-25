@@ -7,6 +7,7 @@ import { useApp } from "@/lib/store";
 import { fmt, addDays } from "@/lib/dates";
 import { useHeadline } from "@/components/blocks";
 import { ProfileGrid, ProfileHead } from "@/components/profile";
+import { NotifySettings } from "@/components/notify";
 import { Sheet, Tabs } from "@/components/ui";
 
 type Tab = "overview" | "settings";
@@ -69,6 +70,7 @@ function Settings() {
         ))}
         <button onClick={() => setPause(true)} style={{ width: "100%" }}><span className="k" style={{ textAlign: "left" }}>Request a pause</span><span className="go">→</span></button>
       </div>
+      <NotifySettings />
       <div className="group-h">Support</div>
       <div className="rows">
         <Link href="/you"><span className="k">Tier rules</span><span className="go">→</span></Link>

@@ -11,6 +11,10 @@ const mono = DM_Mono({ subsets: ["latin", "latin-ext"], weight: ["300", "400"], 
 export const metadata: Metadata = {
   title: "Global Shapers",
   description: "Tasks, hours, meetings and your path through the tiers.",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+  // Lets iPhones add the app to the Home Screen, the only way iOS allows web push.
+  appleWebApp: { capable: true, title: "Shapers", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#f7f7f7" };

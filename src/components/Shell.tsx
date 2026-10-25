@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { elapsed, hoursLabel } from "@/lib/dates";
@@ -28,11 +28,26 @@ export function Wordmark() {
 /** Side menu on desktop; on mobile the same menu opens from the hamburger. */
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { me, my, prefs, setPrefs, db, stillWorkingDue, stillWorking, clockOut, now } = useApp();
+  const { me, my, prefs, setPrefs, db, stillWorkingDue, stillWorking, clockOut, meetingClockIn, now } = useApp();
   const [open, setOpen] = useState(false);
   const session = db.sessions.find((s) => s.memberId === me.id);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   const close = () => setOpen(false);
+
+  // A tapped notification button opens the app as /?n=<action>; run it once, then clean the URL.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const n = q.get("n");
+    if (!n) return;
+    const meeting = q.get("meeting");
+    if (n === "still-yes" && session) stillWorking();
+    if (n === "clock-out" && session) clockOut();
+    if (n === "checkin-present" && meeting) meetingClockIn(meeting, "present");
+    if (n === "checkin-remote" && meeting) meetingClockIn(meeting, "remote");
+    ["n", "meeting", "task"].forEach((k) => q.delete(k));
+    window.history.replaceState(null, "", window.location.pathname + (q.size ? `?${q}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="app">
