@@ -9,6 +9,7 @@ import type { Priority, TaskSize, TaskStatus } from "@/lib/types";
 import { Board, COLUMNS, type Lane, type LaneMode } from "@/components/tasks/Board";
 import { Timeline } from "@/components/tasks/Timeline";
 import { Sheet } from "@/components/ui";
+import { useOnboarding } from "@/components/blocks";
 import { canAssignOthers, canManageTasks, taskRights } from "@/lib/permissions";
 import { SIZE_LABEL, TASK_POINTS } from "@/lib/score";
 
@@ -24,6 +25,7 @@ export default function TasksPage() {
 
 function Tasks() {
   const { db, me, today } = useApp();
+  const onboarding = useOnboarding();
   const params = useSearchParams();
   const router = useRouter();
   const [view, setView] = useState<"board" | "timeline">("board");
@@ -58,7 +60,7 @@ function Tasks() {
       <div className="tasks-head">
         <div>
           <h1 className="page-title">Tasks</h1>
-          <p className="mono-lc muted">{open} open · {late} late · drag a note to move it</p>
+          {onboarding && <p className="mono-lc muted">{open} open · {late} late · drag a note to move it</p>}
         </div>
         <div className="tasks-controls">
           {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
