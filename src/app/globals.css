@@ -637,3 +637,8 @@ a.lb-row:hover { background: #f1f1f1; }
 /* landing: negative space above the greeting (revertable: this block only) */
 .home .glance { padding-top: 12vh; }
 @media (min-width: 1000px) { .home .glance { padding-top: 22vh; } }
+
+/* static page: no rubber-band at the top or bottom, no scroll unless content is taller than the screen */
+html, body { overscroll-behavior: none; }
+body, .app { min-height: 100vh; min-height: 100dvh; }
+@media (min-width: 1000px) { .page { padding-bottom: 24px; } }
