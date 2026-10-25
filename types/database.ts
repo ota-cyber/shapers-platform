@@ -113,6 +113,13 @@ export type Database = {
             foreignKeyName: "absence_notices_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "absence_notices_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -146,6 +153,7 @@ export type Database = {
           check_in_closes_minutes: number
           check_in_opens_minutes: number
           id: boolean
+          stall_days: number
           tracking_since: string
         }
         Insert: {
@@ -154,6 +162,7 @@ export type Database = {
           check_in_closes_minutes?: number
           check_in_opens_minutes?: number
           id?: boolean
+          stall_days?: number
           tracking_since?: string
         }
         Update: {
@@ -162,6 +171,7 @@ export type Database = {
           check_in_closes_minutes?: number
           check_in_opens_minutes?: number
           id?: boolean
+          stall_days?: number
           tracking_since?: string
         }
         Relationships: []
@@ -248,6 +258,13 @@ export type Database = {
             foreignKeyName: "attendance_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -305,6 +322,13 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "attendance_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -387,6 +411,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "imported_week_hours_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -525,6 +556,13 @@ export type Database = {
             foreignKeyName: "member_onboarding_completed_by_fkey"
             columns: ["completed_by"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_onboarding_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -582,6 +620,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_onboarding_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -628,17 +673,111 @@ export type Database = {
           },
         ]
       }
+      member_setup: {
+        Row: {
+          completed_at: string
+          member_id: string
+          step_key: string
+        }
+        Insert: {
+          completed_at?: string
+          member_id: string
+          step_key: string
+        }
+        Update: {
+          completed_at?: string
+          member_id?: string
+          step_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "hour_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_meetings"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_progress"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "task_stats"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "member_setup_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "week_hours"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
       members: {
         Row: {
           active: boolean
-          avatar_url: string | null
+          avatar: string | null
           buddy_id: string | null
           created_at: string
           email: string
+          graduation_proposed_at: string | null
+          graduation_proposed_by: string | null
+          handle: string | null
           id: string
           is_admin: boolean
           joined_on: string
           name: string
+          needs_setup: boolean
+          onboarding_active: boolean
           slack_user_id: string | null
           tier: Database["public"]["Enums"]["tier_key"]
           tier_since: string
@@ -646,14 +785,19 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          avatar_url?: string | null
+          avatar?: string | null
           buddy_id?: string | null
           created_at?: string
           email: string
+          graduation_proposed_at?: string | null
+          graduation_proposed_by?: string | null
+          handle?: string | null
           id?: string
           is_admin?: boolean
           joined_on?: string
           name: string
+          needs_setup?: boolean
+          onboarding_active?: boolean
           slack_user_id?: string | null
           tier?: Database["public"]["Enums"]["tier_key"]
           tier_since?: string
@@ -661,14 +805,19 @@ export type Database = {
         }
         Update: {
           active?: boolean
-          avatar_url?: string | null
+          avatar?: string | null
           buddy_id?: string | null
           created_at?: string
           email?: string
+          graduation_proposed_at?: string | null
+          graduation_proposed_by?: string | null
+          handle?: string | null
           id?: string
           is_admin?: boolean
           joined_on?: string
           name?: string
+          needs_setup?: boolean
+          onboarding_active?: boolean
           slack_user_id?: string | null
           tier?: Database["public"]["Enums"]["tier_key"]
           tier_since?: string
@@ -714,6 +863,13 @@ export type Database = {
             foreignKeyName: "members_buddy_id_fkey"
             columns: ["buddy_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_buddy_id_fkey"
+            columns: ["buddy_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -734,6 +890,76 @@ export type Database = {
           {
             foreignKeyName: "members_buddy_id_fkey"
             columns: ["buddy_id"]
+            isOneToOne: false
+            referencedRelation: "week_hours"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "hour_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "meeting_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_meetings"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_progress"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "task_stats"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
             isOneToOne: false
             referencedRelation: "week_hours"
             referencedColumns: ["member_id"]
@@ -848,6 +1074,13 @@ export type Database = {
             foreignKeyName: "pauses_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "pauses_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -911,6 +1144,13 @@ export type Database = {
             foreignKeyName: "pauses_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "pauses_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -934,6 +1174,102 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "week_hours"
             referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      project_interest: {
+        Row: {
+          created_at: string
+          member_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          member_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          member_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "hour_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_meetings"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_progress"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "task_stats"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "week_hours"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_interest_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -993,6 +1329,13 @@ export type Database = {
             foreignKeyName: "project_members_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "project_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1037,6 +1380,7 @@ export type Database = {
           is_general: boolean
           lead_id: string | null
           name: string
+          series_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -1048,6 +1392,7 @@ export type Database = {
           is_general?: boolean
           lead_id?: string | null
           name: string
+          series_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -1059,6 +1404,7 @@ export type Database = {
           is_general?: boolean
           lead_id?: string | null
           name?: string
+          series_id?: string | null
         }
         Relationships: [
           {
@@ -1100,6 +1446,13 @@ export type Database = {
             foreignKeyName: "projects_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1163,6 +1516,13 @@ export type Database = {
             foreignKeyName: "projects_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "projects_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1186,6 +1546,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "week_hours"
             referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "projects_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1257,6 +1624,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "series_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -1364,6 +1738,13 @@ export type Database = {
             foreignKeyName: "task_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "task_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1403,14 +1784,16 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string | null
-          description: string | null
           due_on: string | null
           id: string
           kind: string
+          notes: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           project_id: string
+          size: string
           sort_order: number
           source_meeting_id: string | null
+          starts_on: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -1420,14 +1803,16 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
           due_on?: string | null
           id?: string
           kind?: string
+          notes?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id: string
+          size?: string
           sort_order?: number
           source_meeting_id?: string | null
+          starts_on?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -1437,14 +1822,16 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
           due_on?: string | null
           id?: string
           kind?: string
+          notes?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id?: string
+          size?: string
           sort_order?: number
           source_meeting_id?: string | null
+          starts_on?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
@@ -1489,6 +1876,13 @@ export type Database = {
             foreignKeyName: "tasks_assignee_id_fkey"
             columns: ["assignee_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1546,6 +1940,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -1724,6 +2125,13 @@ export type Database = {
             foreignKeyName: "work_sessions_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "work_sessions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1781,6 +2189,13 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "work_sessions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
             referencedColumns: ["member_id"]
           },
           {
@@ -1859,16 +2274,6 @@ export type Database = {
         }
         Relationships: []
       }
-      member_badges: {
-        Row: {
-          badge: string | null
-          description: string | null
-          earned: boolean | null
-          member_id: string | null
-          title: string | null
-        }
-        Relationships: []
-      }
       member_meetings: {
         Row: {
           absence_notified: boolean | null
@@ -1905,6 +2310,8 @@ export type Database = {
           buddy_name: string | null
           email: string | null
           expected_by_now: number | null
+          graduation_proposed_at: string | null
+          graduation_proposed_by: string | null
           hour_streak: number | null
           hours_remaining: number | null
           is_admin: boolean | null
@@ -1915,15 +2322,18 @@ export type Database = {
           member_id: string | null
           months_in_tier: number | null
           name: string | null
+          needs_setup: boolean | null
           next_tier: Database["public"]["Enums"]["tier_key"] | null
           next_tier_name: string | null
-          onboarded: boolean | null
+          onboarding_active: boolean | null
+          onboarding_complete: boolean | null
           onboarding_done: number | null
           onboarding_total: number | null
           open_tasks: number | null
           overdue_tasks: number | null
           paused: boolean | null
           review_on: string | null
+          stalled_days: number | null
           tasks_done_30d: number | null
           tasks_done_7d: number | null
           tier: Database["public"]["Enums"]["tier_key"] | null
@@ -1973,6 +2383,13 @@ export type Database = {
             foreignKeyName: "members_buddy_id_fkey"
             columns: ["buddy_id"]
             isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_buddy_id_fkey"
+            columns: ["buddy_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -1998,6 +2415,76 @@ export type Database = {
             referencedColumns: ["member_id"]
           },
           {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "hour_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "meeting_streaks"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_meetings"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_overview"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "member_scores"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_progress"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "task_stats"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "members_graduation_proposed_by_fkey"
+            columns: ["graduation_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "week_hours"
+            referencedColumns: ["member_id"]
+          },
+          {
             foreignKeyName: "members_tier_fkey"
             columns: ["tier"]
             isOneToOne: false
@@ -2005,6 +2492,18 @@ export type Database = {
             referencedColumns: ["key"]
           },
         ]
+      }
+      member_scores: {
+        Row: {
+          hours_points: number | null
+          member_id: string | null
+          task_points: number | null
+          tasks_done: number | null
+          total: number | null
+          weeks_counted: number | null
+          weeks_met: number | null
+        }
+        Relationships: []
       }
       onboarding_progress: {
         Row: {
@@ -2079,8 +2578,45 @@ export type Database = {
       }
     }
     Functions: {
+      add_member: {
+        Args: {
+          p_avatar?: string
+          p_buddy?: string
+          p_email: string
+          p_name: string
+          p_series?: string[]
+        }
+        Returns: {
+          active: boolean
+          avatar: string | null
+          buddy_id: string | null
+          created_at: string
+          email: string
+          graduation_proposed_at: string | null
+          graduation_proposed_by: string | null
+          handle: string | null
+          id: string
+          is_admin: boolean
+          joined_on: string
+          name: string
+          needs_setup: boolean
+          onboarding_active: boolean
+          slack_user_id: string | null
+          tier: Database["public"]["Enums"]["tier_key"]
+          tier_since: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       app_today: { Args: never; Returns: string }
+      can_manage_tasks: { Args: never; Returns: boolean }
       can_see_member: { Args: { p_member: string }; Returns: boolean }
+      can_view_team: { Args: never; Returns: boolean }
       check_in_meeting: {
         Args: { p_meeting: string; p_remote?: boolean }
         Returns: {
@@ -2150,6 +2686,10 @@ export type Database = {
         Args: { p_done?: boolean; p_member?: string; p_step: string }
         Returns: undefined
       }
+      complete_setup: {
+        Args: { p_done?: boolean; p_step: string }
+        Returns: undefined
+      }
       create_project: {
         Args: {
           p_color?: string
@@ -2157,6 +2697,7 @@ export type Database = {
           p_lead?: string
           p_members?: string[]
           p_name: string
+          p_series?: string
         }
         Returns: {
           archived_at: string | null
@@ -2168,10 +2709,49 @@ export type Database = {
           is_general: boolean
           lead_id: string | null
           name: string
+          series_id: string | null
         }
         SetofOptions: {
           from: "*"
           to: "projects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_task: {
+        Args: {
+          p_assignee?: string
+          p_due?: string
+          p_notes?: string
+          p_priority?: Database["public"]["Enums"]["task_priority"]
+          p_project: string
+          p_size?: string
+          p_starts?: string
+          p_status?: Database["public"]["Enums"]["task_status"]
+          p_title: string
+        }
+        Returns: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_on: string | null
+          id: string
+          kind: string
+          notes: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          size: string
+          sort_order: number
+          source_meeting_id: string | null
+          starts_on: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2225,8 +2805,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      import_roster: { Args: { p_rows: Json }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
+      is_core: { Args: never; Returns: boolean }
       is_project_member: { Args: { p_project: string }; Returns: boolean }
+      join_project: {
+        Args: { p_member?: string; p_project: string }
+        Returns: undefined
+      }
       local_week_start: { Args: { ts: string }; Returns: string }
       log_hours: {
         Args: {
@@ -2273,6 +2859,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      propose_graduation: { Args: { p_member: string }; Returns: undefined }
       record_meeting_attendance: {
         Args: {
           p_default?: Database["public"]["Enums"]["attendance_state"]
@@ -2302,6 +2889,10 @@ export type Database = {
       }
       require_admin: { Args: never; Returns: string }
       require_member: { Args: never; Returns: string }
+      resolve_graduation: {
+        Args: { p_approve: boolean; p_member: string }
+        Returns: undefined
+      }
       review_pause: {
         Args: { p_approve: boolean; p_pause: string }
         Returns: {
@@ -2367,13 +2958,73 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_tier: {
+        Args: {
+          p_member: string
+          p_tier: Database["public"]["Enums"]["tier_key"]
+        }
+        Returns: {
+          active: boolean
+          avatar: string | null
+          buddy_id: string | null
+          created_at: string
+          email: string
+          graduation_proposed_at: string | null
+          graduation_proposed_by: string | null
+          handle: string | null
+          id: string
+          is_admin: boolean
+          joined_on: string
+          name: string
+          needs_setup: boolean
+          onboarding_active: boolean
+          slack_user_id: string | null
+          tier: Database["public"]["Enums"]["tier_key"]
+          tier_since: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_task: {
+        Args: { p_patch: Json; p_task: string }
+        Returns: {
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_on: string | null
+          id: string
+          kind: string
+          notes: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          size: string
+          sort_order: number
+          source_meeting_id: string | null
+          starts_on: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       week_start: { Args: { d: string }; Returns: string }
     }
     Enums: {
       attendance_state: "present" | "remote" | "excused" | "unexcused"
       review_status: "approved" | "pending" | "rejected"
-      task_priority: "low" | "medium" | "high" | "urgent"
-      task_status: "todo" | "doing" | "done"
+      task_priority: "low" | "normal" | "high"
+      task_status: "idea" | "todo" | "doing" | "review" | "done"
       tier_key: "go" | "impact" | "core"
     }
     CompositeTypes: {
@@ -2507,8 +3158,8 @@ export const Constants = {
     Enums: {
       attendance_state: ["present", "remote", "excused", "unexcused"],
       review_status: ["approved", "pending", "rejected"],
-      task_priority: ["low", "medium", "high", "urgent"],
-      task_status: ["todo", "doing", "done"],
+      task_priority: ["low", "normal", "high"],
+      task_status: ["idea", "todo", "doing", "review", "done"],
       tier_key: ["go", "impact", "core"],
     },
   },

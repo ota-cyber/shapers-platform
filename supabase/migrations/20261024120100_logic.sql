@@ -22,6 +22,19 @@ language sql stable security definer set search_path = public as $$
   select coalesce((select is_admin from members where user_id = auth.uid() and active), false)
 $$;
 
+-- Tier and admin are separate (docs/PERMISSIONS.md). Core members get full task
+-- rights and see the Team section; only the admin role opens admin actions.
+create function public.is_core() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select tier = 'core' from members where user_id = auth.uid() and active), false)
+$$;
+
+create function public.can_manage_tasks() returns boolean
+language sql stable as $$ select public.is_admin() or public.is_core() $$;
+
+create function public.can_view_team() returns boolean
+language sql stable as $$ select public.is_admin() or public.is_core() $$;
+
 create function public.is_project_member(p_project uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from project_members
@@ -95,7 +108,25 @@ create trigger members_before_write
 
 create function public.tasks_before_write() returns trigger
 language plpgsql as $$
+declare me uuid := public.current_member_id();
 begin
+  -- GO! and Impact members (not admin) work only on tasks assigned to them and
+  -- never change owner, project or size. Rules and service jobs (me is null) are exempt.
+  if me is not null and not public.can_manage_tasks() and new.kind = 'task' then
+    if tg_op = 'INSERT' then
+      if new.assignee_id is distinct from me then
+        raise exception 'You can only create tasks for yourself' using errcode = '42501';
+      end if;
+      new.size := 'M';
+    elsif old.assignee_id is distinct from me then
+      raise exception 'You can only change tasks assigned to you' using errcode = '42501';
+    elsif new.assignee_id is distinct from old.assignee_id
+       or new.project_id is distinct from old.project_id
+       or new.size is distinct from old.size then
+      raise exception 'Only Core members and admins can reassign, move or resize tasks' using errcode = '42501';
+    end if;
+  end if;
+
   new.updated_at := now();
   if tg_op = 'INSERT' then
     new.created_by := coalesce(new.created_by, public.current_member_id());
@@ -150,6 +181,18 @@ begin
     insert into task_events (task_id, actor_id, kind, from_value, to_value)
     values (new.id, actor, 'due', old.due_on::text, new.due_on::text);
   end if;
+  if new.starts_on is distinct from old.starts_on then
+    insert into task_events (task_id, actor_id, kind, from_value, to_value)
+    values (new.id, actor, 'start', old.starts_on::text, new.starts_on::text);
+  end if;
+  if new.size is distinct from old.size then
+    insert into task_events (task_id, actor_id, kind, from_value, to_value)
+    values (new.id, actor, 'size', old.size, new.size);
+  end if;
+  if new.notes is distinct from old.notes then
+    insert into task_events (task_id, actor_id, kind)
+    values (new.id, actor, 'notes');
+  end if;
   if new.project_id is distinct from old.project_id then
     insert into task_events (task_id, actor_id, kind, from_value, to_value)
     values (new.id, actor, 'project', old.project_id::text, new.project_id::text);
@@ -190,11 +233,12 @@ begin
              and source_meeting_id = mt.id and assignee_id = m.id) then
     return new;
   end if;
-  insert into tasks (project_id, title, description, priority, due_on, assignee_id, kind, source_meeting_id)
+  insert into tasks (project_id, title, notes, priority, size, starts_on, due_on, assignee_id, kind, source_meeting_id)
   select p.id,
-         'Community follow-up: read the minutes of ' || to_char(mt.starts_at at time zone 'Europe/Ljubljana', 'DD.MM.') || ' and take a general task',
-         'Missed Community meeting (' || new.state || '). GO! rule: one general task within 14 days and read the minutes.',
-         'medium',
+         'Read the Community minutes (' || to_char(mt.starts_at at time zone 'Europe/Ljubljana', 'YYYY-MM-DD') || ')',
+         'Missed Community meeting (' || new.state || '): read the minutes and pick up one general task within 14 days.',
+         'normal', 'S',
+         (mt.starts_at at time zone 'Europe/Ljubljana')::date,
          (mt.starts_at at time zone 'Europe/Ljubljana')::date + 14,
          m.id, 'consequence', mt.id
   from projects p where p.is_general;
@@ -461,19 +505,23 @@ end $$;
 
 -- ---------------------------------------------------------------- RPC: projects, members, onboarding
 
--- Admin: add a project in one step.
+-- Core or admin: add a project in one step.
 create function public.create_project(
   p_name text,
   p_description text default null,
   p_lead uuid default null,
   p_members uuid[] default '{}',
-  p_color text default null)
+  p_color text default null,
+  p_series text default null)
 returns public.projects
 language plpgsql security definer set search_path = public as $$
-declare me uuid := public.require_admin(); p projects;
+declare me uuid := public.require_member(); p projects;
 begin
-  insert into projects (name, description, lead_id, color, created_by)
-  values (trim(p_name), p_description, p_lead, p_color, me)
+  if not public.can_manage_tasks() then
+    raise exception 'Only Core members and admins can create projects' using errcode = '42501';
+  end if;
+  insert into projects (name, description, lead_id, color, series_id, created_by)
+  values (trim(p_name), p_description, coalesce(p_lead, me), p_color, p_series, me)
   returning * into p;
   insert into project_members (project_id, member_id)
   select p.id, x from unnest(array_append(p_members, p_lead)) as x
@@ -494,6 +542,9 @@ begin
   if st.key is null then
     raise exception 'Unknown onboarding step %', p_step using errcode = 'P0002';
   end if;
+  if not (select onboarding_active from members where id = target) then
+    raise exception 'This member is not onboarding' using errcode = '22023';
+  end if;
   if st.auto then
     raise exception 'This step completes itself' using errcode = '22023';
   end if;
@@ -510,4 +561,206 @@ begin
   else
     delete from member_onboarding where member_id = target and step_key = p_step;
   end if;
+end $$;
+
+-- ---------------------------------------------------------------- RPC: tasks (field-level rules)
+
+-- Create a task. GO!/Impact members (not admin) may only create tasks for themselves.
+create function public.create_task(
+  p_project uuid,
+  p_title text,
+  p_assignee uuid default null,
+  p_status public.task_status default 'todo',
+  p_priority public.task_priority default 'normal',
+  p_size text default 'M',
+  p_starts date default null,
+  p_due date default null,
+  p_notes text default null)
+returns public.tasks
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_member(); t tasks;
+begin
+  if not public.can_manage_tasks() then
+    if p_assignee is not null and p_assignee <> me then
+      raise exception 'You can only create tasks for yourself' using errcode = '42501';
+    end if;
+    p_assignee := me;
+  end if;
+  insert into tasks (project_id, title, assignee_id, status, priority, size, starts_on, due_on, notes)
+  values (p_project, trim(p_title), p_assignee, p_status, p_priority, coalesce(p_size, 'M'),
+          coalesce(p_starts, p_due - 5), p_due, p_notes)
+  returning * into t;
+  return t;
+end $$;
+
+-- Patch a task with only the fields given, e.g. {"status": "done"}.
+-- Members who don't manage tasks are refused if the patch so much as mentions
+-- assignee_id, project_id or size, even with the current value.
+create function public.update_task(p_task uuid, p_patch jsonb) returns public.tasks
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := public.require_member();
+  t tasks;
+  allowed text[] := array['title', 'notes', 'status', 'priority', 'starts_on', 'due_on', 'assignee_id', 'project_id', 'size'];
+  k text;
+begin
+  select * into t from tasks where id = p_task;
+  if t.id is null then
+    raise exception 'Task not found' using errcode = 'P0002';
+  end if;
+  for k in select jsonb_object_keys(p_patch) loop
+    if not k = any (allowed) then
+      raise exception 'Unknown task field %', k using errcode = '22023';
+    end if;
+  end loop;
+  if not public.can_manage_tasks() then
+    if t.assignee_id is distinct from me then
+      raise exception 'You can only change tasks assigned to you' using errcode = '42501';
+    end if;
+    if p_patch ?| array['assignee_id', 'project_id', 'size'] then
+      raise exception 'Only Core members and admins can reassign, move or resize tasks' using errcode = '42501';
+    end if;
+  end if;
+  t := jsonb_populate_record(t, p_patch);
+  update tasks set
+    title = t.title, notes = t.notes, status = t.status, priority = t.priority,
+    starts_on = t.starts_on, due_on = t.due_on, assignee_id = t.assignee_id,
+    project_id = t.project_id, size = t.size
+  where id = p_task
+  returning * into t;
+  return t;
+end $$;
+
+-- An hour clocked against a task shows up in the task's history.
+create function public.work_session_clocked() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.task_id is not null and new.ended_at is not null and old.ended_at is null then
+    insert into task_events (task_id, actor_id, kind, to_value, at)
+    values (new.task_id, new.member_id, 'clocked',
+            round(extract(epoch from (new.ended_at - new.started_at)) / 3600.0 * 4) / 4 || ' h',
+            new.ended_at);
+  end if;
+  return new;
+end $$;
+
+create trigger work_session_clocked
+  after update of ended_at on public.work_sessions
+  for each row execute function public.work_session_clocked();
+
+-- ---------------------------------------------------------------- RPC: members, setup, graduation
+
+-- Admin: add a new member; they start as GO! and onboard.
+create function public.add_member(
+  p_name text,
+  p_email text,
+  p_buddy uuid default null,
+  p_series text[] default '{}',
+  p_avatar text default 'sprout')
+returns public.members
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_admin(); m members;
+begin
+  insert into members (name, email, tier, buddy_id, avatar, onboarding_active, joined_on, tier_since)
+  values (trim(p_name), lower(trim(p_email)), 'go', p_buddy, p_avatar, true, public.app_today(), public.app_today())
+  returning * into m;
+  insert into series_members (series_id, member_id)
+  select s, m.id from unnest(p_series) s where s <> 'community'
+  on conflict do nothing;
+  return m;
+end $$;
+
+-- Admin, deploy day: existing members from the roster. They keep their tier, skip
+-- onboarding and get the short setup. Emails already on file are skipped.
+-- p_rows: [{"name": "...", "email": "...", "tier": "go|impact|core", "tier_since": "2026-01-01"}]
+create function public.import_roster(p_rows jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_admin(); added int;
+begin
+  with rows as (
+    select distinct on (lower(r ->> 'email'))
+           trim(r ->> 'name') as name,
+           lower(trim(r ->> 'email')) as email,
+           (r ->> 'tier')::tier_key as tier,
+           coalesce((r ->> 'tier_since')::date, public.app_today()) as since
+    from jsonb_array_elements(p_rows) r
+  ), ins as (
+    insert into members (name, email, tier, joined_on, tier_since, onboarding_active, needs_setup)
+    select name, email, tier, since, since, false, true from rows
+    on conflict (email) do nothing
+    returning 1
+  )
+  select count(*) into added from ins;
+  return jsonb_build_object('added', added, 'skipped', jsonb_array_length(p_rows) - added);
+end $$;
+
+-- Self only: the imported member's setup steps.
+create function public.complete_setup(p_step text, p_done boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_member();
+begin
+  if p_done then
+    insert into member_setup (member_id, step_key) values (me, p_step) on conflict do nothing;
+  else
+    delete from member_setup where member_id = me and step_key = p_step;
+  end if;
+end $$;
+
+-- Picking a project records interest only; a lead assigns the first task.
+create function public.join_project(p_project uuid, p_member uuid default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := public.require_member();
+  target uuid := coalesce(p_member, me);
+begin
+  if target <> me and not public.is_admin()
+     and not exists (select 1 from members where id = target and buddy_id = me) then
+    raise exception 'You can only pick projects for yourself' using errcode = '42501';
+  end if;
+  insert into project_interest (member_id, project_id) values (target, p_project) on conflict do nothing;
+  if (select onboarding_active from members where id = target) then
+    insert into member_onboarding (member_id, step_key, completed_by)
+    values (target, 'project', me) on conflict do nothing;
+  end if;
+  if (select needs_setup from members where id = target) then
+    insert into member_setup (member_id, step_key) values (target, 'projects') on conflict do nothing;
+  end if;
+end $$;
+
+-- The buddy proposes ending onboarding once every step is done; an admin confirms.
+create function public.propose_graduation(p_member uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_member(); m members;
+begin
+  select * into m from members where id = p_member;
+  if m.buddy_id is distinct from me then
+    raise exception 'Only the buddy can propose ending onboarding' using errcode = '42501';
+  end if;
+  if not m.onboarding_active then
+    raise exception 'This member is not onboarding' using errcode = '22023';
+  end if;
+  if exists (select 1 from public.onboarding_progress where member_id = p_member and not done) then
+    raise exception 'Every onboarding step has to be done first' using errcode = '22023';
+  end if;
+  update members set graduation_proposed_by = me, graduation_proposed_at = now() where id = p_member;
+end $$;
+
+create function public.resolve_graduation(p_member uuid, p_approve boolean) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_admin();
+begin
+  update members
+     set onboarding_active = case when p_approve and graduation_proposed_by is not null then false else onboarding_active end,
+         graduation_proposed_by = null,
+         graduation_proposed_at = null
+   where id = p_member;
+end $$;
+
+-- Admin: change tier (restarts the time-in-tier clock via trigger).
+create function public.set_tier(p_member uuid, p_tier public.tier_key) returns public.members
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_admin(); m members;
+begin
+  update members set tier = p_tier where id = p_member returning * into m;
+  return m;
 end $$;

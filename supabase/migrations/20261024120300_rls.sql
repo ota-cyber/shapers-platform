@@ -20,6 +20,8 @@ alter table public.imported_week_hours enable row level security;
 alter table public.pauses              enable row level security;
 alter table public.onboarding_steps    enable row level security;
 alter table public.member_onboarding   enable row level security;
+alter table public.member_setup        enable row level security;
+alter table public.project_interest    enable row level security;
 
 -- Shared reference data
 create policy "members read" on public.tiers            for select to authenticated using (true);
@@ -41,27 +43,29 @@ create policy "own, mentee or admin" on public.work_sessions       for select to
 create policy "own, mentee or admin" on public.imported_week_hours for select to authenticated using (public.can_see_member(member_id));
 create policy "own, mentee or admin" on public.pauses              for select to authenticated using (public.can_see_member(member_id));
 create policy "own, mentee or admin" on public.member_onboarding   for select to authenticated using (public.can_see_member(member_id));
+create policy "own, mentee or admin" on public.member_setup        for select to authenticated using (public.can_see_member(member_id));
+create policy "members read"         on public.project_interest    for select to authenticated using (public.current_member_id() is not null);
 
 -- Admin writes
 create policy "admin write" on public.members         for all to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "admin write" on public.series_members  for all to authenticated using (public.is_admin()) with check (public.is_admin());
-create policy "admin write" on public.projects        for all to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "core or admin write" on public.projects for all to authenticated using (public.can_manage_tasks()) with check (public.can_manage_tasks());
 create policy "admin write" on public.project_members for all to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "admin write" on public.tiers           for update to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "admin write" on public.app_settings    for update to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- Tasks: members create tasks in their projects; they can change tasks they hold,
--- pick up unassigned tasks in their projects, and hand tasks to someone else.
-create policy "create in my projects" on public.tasks for insert to authenticated
-  with check (public.is_admin() or public.is_project_member(project_id));
+-- Tasks (docs/PERMISSIONS.md): Core members and admins change any task. GO! and
+-- Impact members change only tasks assigned to them and create tasks only for
+-- themselves; the tasks_before_write trigger also stops them changing owner,
+-- project or size. Prefer the create_task / update_task RPCs.
+create policy "create" on public.tasks for insert to authenticated
+  with check (public.can_manage_tasks() or assignee_id = public.current_member_id());
 
-create policy "change mine or unassigned" on public.tasks for update to authenticated
-  using (public.is_admin()
-         or assignee_id = public.current_member_id()
-         or (assignee_id is null and public.is_project_member(project_id)))
-  with check (public.is_admin() or public.is_project_member(project_id));
+create policy "change" on public.tasks for update to authenticated
+  using (public.can_manage_tasks() or assignee_id = public.current_member_id())
+  with check (public.can_manage_tasks() or assignee_id = public.current_member_id());
 
-create policy "admin delete" on public.tasks for delete to authenticated
-  using (public.is_admin());
+create policy "delete" on public.tasks for delete to authenticated
+  using (public.can_manage_tasks());
 
 -- RPCs check the caller themselves (require_member / require_admin).

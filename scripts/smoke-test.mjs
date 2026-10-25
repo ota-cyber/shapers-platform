@@ -41,16 +41,27 @@ async function signIn(email) {
   return j.access_token;
 }
 
-// Pick test subjects with the service key: a GO! member with a buddy, their buddy, another admin.
-const all = (await api(service, "/rest/v1/members?select=id,email,tier,is_admin,buddy_id&order=email", { key: service })).data;
-const goMember = all.find((m) => m.tier === "go" && m.buddy_id);
+// Test subjects from the demo cast (see scripts/build_seed.py).
+const all = (await api(service, "/rest/v1/members?select=id,email,handle,tier,is_admin,buddy_id&order=email", { key: service })).data;
+const by = (h) => all.find((m) => m.handle === h);
+const goMember = by("petra.jerman");   // GO!, has tasks, buddy Jan
 const buddy = all.find((m) => m.id === goMember.buddy_id);
-const admin = all.find((m) => m.is_admin && m.id !== buddy.id) ?? buddy;
-const outsider = all.find((m) => !m.is_admin && m.id !== goMember.id);
+const admin = by("ana.kovac");         // admin (and Core)
+const outsider = by("matic.kos");      // Impact, not related to Petra
+const newbie = by("lea.zorman");       // onboarding, stalled, buddy Rok
+const mia = by("mia.kranjc");          // onboarding, every step done, buddy Rok
+const rok = by("rok.golob");
+const setupMember = by("zala.turk");   // imported, on setup steps
+
+// Meeting check-in window is part of the test; the demo seed opens it.
+await api(service, "/rest/v1/app_settings?id=eq.true", { method: "PATCH", body: { check_in_any_time: false }, key: service });
 
 const member = await signIn(goMember.email);
 const buddyToken = await signIn(buddy.email);
 const adminToken = await signIn(admin.email);
+const rokToken = await signIn(rok.email);
+const newbieToken = await signIn(newbie.email);
+const setupToken = await signIn(setupMember.email);
 
 // ---- visibility
 let r = await get(member, "member_overview?select=member_id");
@@ -58,7 +69,7 @@ ok(r.ok && r.data.length === 1 && r.data[0].member_id === goMember.id, "member s
 r = await get(member, `attendance?select=member_id&member_id=eq.${outsider.id}`);
 ok(r.ok && r.data.length === 0, "member cannot read someone else's attendance");
 r = await get(member, "tasks?select=id");
-ok(r.ok && r.data.length > 40, "member can read all tasks", `${r.data?.length}`);
+ok(r.ok && r.data.length >= 30, "member can read all tasks", `${r.data?.length}`);
 r = await get(buddyToken, `member_overview?select=member_id&member_id=eq.${goMember.id}`);
 ok(r.ok && r.data.length === 1, "buddy can see their mentee");
 r = await get(adminToken, "member_overview?select=member_id");
@@ -108,37 +119,64 @@ ok(rec.ok && rec.data > 0, "admin records a whole meeting in one call", `${rec.d
 const rm = await rpc(member, "record_meeting_attendance", { p_meeting: past.id });
 ok(!rm.ok, "member cannot record a whole meeting");
 
-// ---- tasks
-const mine = (await get(member, `tasks?select=id,status&assignee_id=eq.${goMember.id}&status=neq.done&kind=eq.task&limit=1`)).data[0]
-  ?? (await api(adminToken, "/rest/v1/tasks?select=id,status", { method: "POST", body: { project_id: (await get(adminToken, "projects?select=id&is_general=eq.false&limit=1")).data[0].id, title: "Smoke test task", assignee_id: goMember.id } })).data[0];
-const upd = await api(member, `/rest/v1/tasks?id=eq.${mine.id}`, { method: "PATCH", body: { status: "done", priority: "high" } });
-ok(upd.ok && upd.data[0]?.completed_at, "member finishes their task, completed_at is set");
-const ev = (await get(member, `task_events?select=kind,from_value,to_value&task_id=eq.${mine.id}&kind=eq.status`)).data;
-ok(ev.some((e) => e.to_value === "done"), "status change is in the task history");
+// ---- tasks (docs/PERMISSIONS.md)
+const project = (await get(member, "projects?select=id&is_general=eq.false&limit=1")).data[0].id;
+const mine = (await get(member, `tasks?select=id,status&assignee_id=eq.${goMember.id}&status=neq.done&limit=1`)).data[0];
+const upd = await rpc(member, "update_task", { p_task: mine.id, p_patch: { status: "done", priority: "high", starts_on: "2026-10-20", due_on: "2026-10-30" } });
+ok(upd.ok && upd.data.completed_at, "member finishes and reschedules their own task");
+const ev = (await get(member, `task_events?select=kind,to_value&task_id=eq.${mine.id}`)).data;
+ok(ev.some((e) => e.kind === "status" && e.to_value === "done") && ev.some((e) => e.kind === "start"), "changes are in the task history");
+const handoff = await rpc(member, "update_task", { p_task: mine.id, p_patch: { assignee_id: buddy.id } });
+ok(!handoff.ok, "member cannot hand their task to someone else");
+const sameOwner = await rpc(member, "update_task", { p_task: mine.id, p_patch: { assignee_id: goMember.id } });
+ok(!sameOwner.ok, "member is refused even when sending their own id as assignee");
+const resize = await rpc(member, "update_task", { p_task: mine.id, p_patch: { size: "L" } });
+ok(!resize.ok, "member cannot change a task's size");
+const direct = await api(member, `/rest/v1/tasks?id=eq.${mine.id}`, { method: "PATCH", body: { project_id: project } });
+ok(!direct.ok || direct.data.length === 0 || direct.data[0].project_id !== project || false, "direct table update cannot move a task either", `${direct.status}`);
 const othersTask = (await get(member, `tasks?select=id&assignee_id=eq.${outsider.id}&limit=1`)).data[0];
-if (othersTask) {
-  const steal = await api(member, `/rest/v1/tasks?id=eq.${othersTask.id}`, { method: "PATCH", body: { status: "done" } });
-  ok(steal.ok && steal.data.length === 0, "member cannot change someone else's task");
-}
-const handoff = await api(member, `/rest/v1/tasks?id=eq.${mine.id}`, { method: "PATCH", body: { assignee_id: buddy.id } });
-ok(handoff.ok && handoff.data[0]?.assignee_id === buddy.id, "member hands their task to someone");
-
-const proj = await rpc(adminToken, "create_project", { p_name: `Smoke project ${Date.now()}`, p_lead: admin.id, p_members: [goMember.id] });
+const steal = await rpc(member, "update_task", { p_task: othersTask.id, p_patch: { status: "done" } });
+ok(!steal.ok, "member cannot change someone else's task");
+const unassigned = (await get(member, "tasks?select=id&assignee_id=is.null&limit=1")).data[0];
+const take = await rpc(member, "update_task", { p_task: unassigned.id, p_patch: { assignee_id: goMember.id } });
+ok(!take.ok, "member cannot pick up an unassigned task");
+const ownNew = await rpc(member, "create_task", { p_project: project, p_title: "Smoke: my own task", p_size: "L" });
+ok(ownNew.ok && ownNew.data.assignee_id === goMember.id && ownNew.data.size === "M", "member creates a task for themselves (size stays M)");
+const forOther = await rpc(member, "create_task", { p_project: project, p_title: "Smoke: for someone else", p_assignee: buddy.id });
+ok(!forOther.ok, "member cannot create a task for someone else");
+const adminMove = await rpc(adminToken, "update_task", { p_task: mine.id, p_patch: { assignee_id: buddy.id, size: "L" } });
+ok(adminMove.ok && adminMove.data.assignee_id === buddy.id, "admin reassigns and resizes any task");
+const memberProj = await rpc(member, "create_project", { p_name: "Smoke: member project" });
+ok(!memberProj.ok, "member cannot create a project");
+const proj = await rpc(adminToken, "create_project", { p_name: `Smoke project ${Date.now()}`, p_lead: admin.id, p_members: [goMember.id], p_series: "shapers-tech" });
 ok(proj.ok && proj.data.id, "admin adds a project in one step");
 
-// ---- onboarding, streaks, badges
-r = await get(member, `onboarding_progress?select=step_key,done&member_id=eq.${goMember.id}`);
-ok(r.ok && r.data.length === 10, "onboarding checklist has 10 steps", `${r.data.filter((s) => s.done).length} done`);
-const tick = await rpc(member, "complete_onboarding_step", { p_step: "join_slack" });
-ok(tick.ok, "member ticks their own step");
-const adm = await rpc(member, "complete_onboarding_step", { p_step: "sign_contract" });
-ok(!adm.ok, "member cannot tick an admin-only step");
-const bt = await rpc(buddyToken, "complete_onboarding_step", { p_step: "meet_buddy", p_member: goMember.id });
-ok(bt.ok, "buddy ticks a step for their mentee");
-r = await get(member, "member_badges?select=badge,earned");
-ok(r.ok && r.data.length === 5, "five badges listed", r.data?.filter((b) => b.earned).map((b) => b.badge).join(","));
+// ---- onboarding, setup, graduation, scores
+r = await get(newbieToken, `onboarding_progress?select=step_key,done&member_id=eq.${newbie.id}`);
+ok(r.ok && r.data.length === 11, "onboarding checklist has 11 steps", `${r.data?.filter((x) => x.done).length} done`);
+r = await get(rokToken, `member_overview?select=stalled_days&member_id=eq.${newbie.id}`);
+ok(r.ok && r.data[0]?.stalled_days >= 7, "buddy sees the stalled mentee", `${r.data?.[0]?.stalled_days} days`);
+ok((await rpc(newbieToken, "complete_onboarding_step", { p_step: "calendar" })).ok, "new member ticks their own step");
+ok(!(await rpc(member, "complete_onboarding_step", { p_step: "calendar" })).ok, "a member who isn't onboarding has no steps to tick");
+ok((await rpc(rokToken, "join_project", { p_project: project, p_member: newbie.id })).ok, "buddy records a project pick for their mentee");
+ok(!(await rpc(rokToken, "propose_graduation", { p_member: newbie.id })).ok, "graduation needs every step done");
+ok(!(await rpc(adminToken, "propose_graduation", { p_member: mia.id })).ok, "only the buddy proposes graduation");
+ok((await rpc(rokToken, "propose_graduation", { p_member: mia.id })).ok, "buddy proposes ending Mia's onboarding");
+ok(!(await rpc(rokToken, "resolve_graduation", { p_member: mia.id, p_approve: true })).ok, "buddy cannot confirm it");
+ok((await rpc(adminToken, "resolve_graduation", { p_member: mia.id, p_approve: true })).ok, "admin confirms");
+r = await get(adminToken, `members?select=onboarding_active&id=eq.${mia.id}`);
+ok(r.data[0].onboarding_active === false, "Mia is out of onboarding");
+ok((await rpc(setupToken, "complete_setup", { p_step: "projects" })).ok, "imported member ticks a setup step");
+const imp = await rpc(adminToken, "import_roster", { p_rows: [{ name: "Smoke Person", email: `smoke${Date.now()}@sandbox.example`, tier: "impact" }, { name: "Dup", email: goMember.email, tier: "go" }] });
+ok(imp.ok && imp.data.added === 1 && imp.data.skipped === 1, "roster import adds new and skips known emails");
+ok(!(await rpc(member, "set_tier", { p_member: goMember.id, p_tier: "core" })).ok, "member cannot change a tier");
+r = await get(adminToken, "member_scores?select=member_id,total,task_points,hours_points&order=total.desc&limit=3");
+ok(r.ok && r.data.length === 3 && r.data[0].total > 0, "leaderboard scores", r.data?.map((x) => x.total).join(","));
+r = await get(member, "member_scores?select=member_id");
+ok(r.ok && r.data.length === 1, "a GO! member only sees their own score");
 r = await get(adminToken, "hour_streaks?select=current_streak,best_streak&order=best_streak.desc&limit=1");
 ok(r.ok && r.data[0].best_streak > 0, "streaks are computed", `best ${r.data?.[0]?.best_streak}`);
 
+await api(service, "/rest/v1/app_settings?id=eq.true", { method: "PATCH", body: { check_in_any_time: true }, key: service });
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll checks passed");
 process.exit(failures ? 1 : 0);

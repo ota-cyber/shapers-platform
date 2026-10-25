@@ -6,8 +6,9 @@ create extension if not exists citext;
 -- ---------------------------------------------------------------- enums
 
 create type public.tier_key         as enum ('go', 'impact', 'core');
-create type public.task_status      as enum ('todo', 'doing', 'done');
-create type public.task_priority    as enum ('low', 'medium', 'high', 'urgent');
+-- Lanes of the team's board: Idea lane, Priority lane, In progress, Validation, Done.
+create type public.task_status      as enum ('idea', 'todo', 'doing', 'review', 'done');
+create type public.task_priority    as enum ('low', 'normal', 'high');
 create type public.attendance_state as enum ('present', 'remote', 'excused', 'unexcused');
 create type public.review_status    as enum ('approved', 'pending', 'rejected');
 
@@ -39,6 +40,7 @@ create table public.app_settings (
   check_in_closes_minutes int not null default 15,   -- after meeting end
   check_in_any_time       boolean not null default false, -- demo switch
   backfill_days           int not null default 1,    -- older manual entries need approval
+  stall_days              int not null default 7,    -- no onboarding progress for this long nudges the buddy
   tracking_since          date not null default current_date -- first week with hours data
 );
 insert into public.app_settings default values;
@@ -55,12 +57,20 @@ create table public.members (
   joined_on   date not null default current_date,
   tier_since  date not null default current_date,
   buddy_id    uuid references public.members (id) on delete set null,
+  handle      text generated always as (split_part(email::text, '@', 1)) stored,
   slack_user_id text,
-  avatar_url  text,
+  avatar      text,                                   -- image key in the frontend's /public/img
+  -- Onboarding: true while a new member works through the checklist. Members who
+  -- joined before the platform never onboard; they get the short setup instead.
+  onboarding_active      boolean not null default false,
+  needs_setup            boolean not null default false,
+  graduation_proposed_by uuid references public.members (id) on delete set null,
+  graduation_proposed_at timestamptz,
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
 create index on public.members (buddy_id);
+create unique index members_handle on public.members (handle);
 
 create table public.series (
   id       text primary key,          -- slug, e.g. 'shapers-tech'
@@ -129,6 +139,7 @@ create table public.projects (
   id          uuid primary key default gen_random_uuid(),
   name        text not null unique,
   description text,
+  series_id   text references public.series (id),
   color       text,
   lead_id     uuid references public.members (id) on delete set null,
   is_general  boolean not null default false,  -- home of consequence tasks
@@ -138,8 +149,8 @@ create table public.projects (
 );
 create unique index projects_one_general on public.projects (is_general) where is_general;
 
-insert into public.projects (name, description, color, is_general)
-values ('General', 'Organisation-wide tasks, including follow-ups for missed Community meetings.', '#64748b', true);
+insert into public.projects (name, description, series_id, color, is_general)
+values ('General', 'Organisation-wide tasks, including follow-ups for missed Community meetings.', 'community', '#64748b', true);
 
 create table public.project_members (
   project_id uuid not null references public.projects (id) on delete cascade,
@@ -153,10 +164,13 @@ create table public.tasks (
   id           uuid primary key default gen_random_uuid(),
   project_id   uuid not null references public.projects (id) on delete cascade,
   title        text not null check (length(trim(title)) > 0),
-  description  text,
+  notes        text,
   status       public.task_status not null default 'todo',
-  priority     public.task_priority not null default 'medium',
-  due_on       date,
+  priority     public.task_priority not null default 'normal',
+  -- Effort, set by Core or admin only: S/M/L = 1/3/8 points in the performance score.
+  size         text not null default 'M' check (size in ('S', 'M', 'L')),
+  starts_on    date,                      -- timeline bar start
+  due_on       date,                      -- timeline bar end
   assignee_id  uuid references public.members (id) on delete set null,
   kind         text not null default 'task' check (kind in ('task', 'consequence')),
   source_meeting_id uuid references public.meetings (id) on delete set null,
@@ -175,7 +189,8 @@ create table public.task_events (
   id         bigint generated always as identity primary key,
   task_id    uuid not null references public.tasks (id) on delete cascade,
   actor_id   uuid references public.members (id) on delete set null,
-  kind       text not null check (kind in ('created', 'status', 'assignee', 'priority', 'due', 'project', 'title')),
+  kind       text not null check (kind in ('created', 'status', 'assignee', 'priority', 'due', 'start',
+                                           'project', 'title', 'notes', 'size', 'clocked')),
   from_value text,
   to_value   text,
   at         timestamptz not null default now()
@@ -226,27 +241,29 @@ create index on public.pauses (member_id, starts_on);
 
 -- ---------------------------------------------------------------- onboarding
 
+-- Mirrors the two real onboarding meetings. Keys match the frontend's step ids.
 create table public.onboarding_steps (
   key         text primary key,
   title       text not null,
   description text,
-  stage       text not null check (stage in ('welcome', 'setup', 'first-steps')),
+  stage       text not null,                  -- group heading in the checklist
   admin_only  boolean not null default false, -- only an admin can tick it
   auto        boolean not null default false, -- computed from activity
   sort        int not null
 );
 
 insert into public.onboarding_steps values
-  ('read_rules',      'Read the values and your tier rules',   'What Shapers stands for, your weekly hours, meetings and how to announce an absence.', 'welcome',     false, false, 1),
-  ('meet_buddy',      'Meet your buddy',                       'Your buddy is your first contact. You meet for 20 minutes every week.',                'welcome',     false, false, 2),
-  ('sign_contract',   'Sign the membership agreement',         'Signed at the second onboarding meeting.',                                             'setup',       true,  false, 3),
-  ('org_email',       'Get your Shapers email',                'Your official address on the organisation domain.',                                    'setup',       true,  false, 4),
-  ('join_slack',      'Join Slack',                            'All communication happens on Slack.',                                                  'setup',       false, false, 5),
-  ('add_calendar',    'Add the meetings calendar',             'Every meeting lives in Google Calendar.',                                              'setup',       false, false, 6),
-  ('first_project',   'Join your first project',               'Done when you are on a project.',                                                      'first-steps', false, true,  7),
-  ('first_clock_in',  'Clock your first hour',                 'Done when your first hour is logged.',                                                 'first-steps', false, true,  8),
-  ('first_meeting',   'Check in to your first meeting',        'Done when you attend a meeting.',                                                      'first-steps', false, true,  9),
-  ('first_task_done', 'Finish your first task',                'Done when a task assigned to you is done.',                                            'first-steps', false, true,  10);
+  ('values',        'Read what Shapers stands for', 'Values, and the rules everyone keeps.',          'Meeting one · values and rules', false, false, 1),
+  ('tiers',         'Learn how tiers work',         'GO!, Impact, Core, and what each asks of you.',  'Meeting one · values and rules', false, false, 2),
+  ('contract',      'Sign your contract',           'One page. Your buddy has it.',                   'Meeting two · tools and project', false, false, 3),
+  ('email',         'Get your Shapers email',       'Your address on the organisation''s domain.',    'Meeting two · tools and project', false, false, 4),
+  ('slack',         'Join Slack',                   'Where absences are announced.',                  'Meeting two · tools and project', false, false, 5),
+  ('calendar',      'Subscribe to the calendar',    'Every meeting, read from Google Calendar.',      'Meeting two · tools and project', false, false, 6),
+  ('buddy',         'Meet your buddy',              'Twenty minutes, every week.',                    'Meeting two · tools and project', false, false, 7),
+  ('project',       'Pick your first project',      'Where your hours will go.',                      'Meeting two · tools and project', false, false, 8),
+  ('first-hour',    'Clock your first hour',        'At Impact Hub. One tap.',                        'Your first weeks',                false, true,  9),
+  ('first-task',    'Finish your first task',       'Anything. Small is fine.',                       'Your first weeks',                false, true,  10),
+  ('first-meeting', 'Attend your first meeting',    'Clock in when it starts.',                       'Your first weeks',                false, true,  11);
 
 create table public.member_onboarding (
   member_id    uuid not null references public.members (id) on delete cascade,
@@ -254,4 +271,21 @@ create table public.member_onboarding (
   completed_at timestamptz not null default now(),
   completed_by uuid references public.members (id) on delete set null,
   primary key (member_id, step_key)
+);
+
+-- Short setup for members imported from the roster (they skip onboarding).
+-- 'first-hour' is derived from their hours, not stored.
+create table public.member_setup (
+  member_id    uuid not null references public.members (id) on delete cascade,
+  step_key     text not null check (step_key in ('confirm-tier', 'projects')),
+  completed_at timestamptz not null default now(),
+  primary key (member_id, step_key)
+);
+
+-- Projects a member picked; the project lead assigns their first task.
+create table public.project_interest (
+  member_id  uuid not null references public.members (id) on delete cascade,
+  project_id uuid not null references public.projects (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (member_id, project_id)
 );
