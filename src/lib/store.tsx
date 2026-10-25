@@ -5,6 +5,7 @@
 // demo survives a reload.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
@@ -14,6 +15,7 @@ import { SignIn } from "@/components/SignIn";
 
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
+const INTRO_KEY = "shapers-intro-played";
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
@@ -39,6 +41,13 @@ interface Ctx {
   /** Signed-in email in backend mode (Google or demo); null in local demo mode. */
   authEmail: string | null;
   signOut: () => void;
+  approveJoin: (id: string, buddyId: string | null) => void;
+  declineJoin: (id: string) => void;
+  /** The onboarding screens are done (backend mode: adds the starter history). */
+  finishOnboardingFlow: () => void;
+  /** A GO! member just signed in: the onboarding plays from its first screen. */
+  playIntro: boolean;
+  introPlayed: () => void;
   clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
   clockOut: () => void;
@@ -115,6 +124,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Backend mode only: who is signed in. "signed-out" and "not-member" show the sign-in screen.
   const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
+  // Every sign-in as a GO! member plays the onboarding from the start (demo rule, 2026-10-25).
+  // Once per sign-in per tab: a reload doesn't replay it, signing in again does.
+  const [playIntro, setPlayIntro] = useState(false);
+  const maybePlayIntro = useCallback(
+    (db: Db, handle: string) => {
+      const m = db.members.find((x) => x.id === handle);
+      let played: string | null = null;
+      try { played = sessionStorage.getItem(INTRO_KEY); } catch {}
+      if (m?.tier !== "GO!" || played === handle) return;
+      try { sessionStorage.setItem(INTRO_KEY, handle); } catch {}
+      setPlayIntro(true);
+      router.replace("/onboarding");
+    },
+    [router],
+  );
 
   // Backend mode: the database is the truth. Reload after every write and every minute.
   const reload = useCallback(() => {
@@ -142,16 +167,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const email = await sessionEmail();
       if (!email) return setAuth({ status: "signed-out", email: null });
       const handle = await myHandle(email);
-      if (!handle) return setAuth({ status: "not-member", email });
+      if (!handle) {
+        await api.requestToJoin().catch(() => undefined);
+        return setAuth({ status: "not-member", email });
+      }
       const db = await loadDb();
       setState({ db, prefs: { ...loadPrefs(), meId: handle } });
       setAuth({ status: "ready", email });
+      maybePlayIntro(db, handle);
       if (await syncCalendar()) void reload();
     } catch (e) {
       setError((e as Error).message);
       setAuth({ status: "signed-out", email: null });
     }
-  }, [reload]);
+  }, [reload, maybePlayIntro]);
 
   const demoSignIn = useCallback(
     (handle: string) => {
@@ -163,6 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const doSignOut = useCallback(() => {
+    try { sessionStorage.removeItem(INTRO_KEY); } catch {}
     void signOut().then(() => {
       setState(null);
       setAuth({ status: "signed-out", email: null });
@@ -259,6 +289,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prefs,
       authEmail: null,
       signOut: () => {},
+      playIntro: false,
+      introPlayed: () => {},
+      approveJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
+      declineJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
+      finishOnboardingFlow: () => {},
       now,
       today,
       me,
@@ -462,14 +497,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const overrides: Partial<Ctx> = {
       authEmail: auth.email,
       signOut: doSignOut,
+      playIntro,
+      introPlayed: () => setPlayIntro(false),
+      approveJoin: (id, buddyId) => { base.approveJoin(id, buddyId); remote(() => api.approveJoin(id, buddyId)); },
+      declineJoin: (id) => { base.declineJoin(id); remote(() => api.declineJoin(id)); },
+      finishOnboardingFlow: () => remote(api.seedStarterHistory),
       // "View as" signs in as that demo member (it ends a Google session).
       setPrefs: (p) => {
         base.setPrefs(p);
         if (p.meId && p.meId !== prefs.meId) {
-          signInAs(p.meId)
-            .then(() => setAuth((a) => ({ ...a, email: `${p.meId}@sandbox.example` })))
-            .then(reload)
-            .catch((e: Error) => setError(e.message));
+          // Switching person is a new sign-in: start() reloads and plays the intro for GO! members.
+          try { sessionStorage.removeItem(INTRO_KEY); } catch {}
+          signInAs(p.meId).then(start).catch((e: Error) => setError(e.message));
         }
       },
       // The demo reset restarts my onboarding from day one (the database refuses admins).
@@ -524,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
     };
     return { ...base, ...overrides };
-  }, [state, now, mutate, remote, reload, auth.email, doSignOut]);
+  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, start]);
 
   if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
     return (
@@ -538,6 +577,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }}
         onDemo={demoSignIn}
         onSignOut={doSignOut}
+        onRetry={() => void start()}
       />
     );
   }

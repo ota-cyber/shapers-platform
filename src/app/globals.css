@@ -666,3 +666,6 @@ button.wk-bar { border: 0; text-align: left; cursor: pointer; font: inherit; fon
   line-height: 1.4;
   cursor: pointer;
 }
+
+/* Log out (You -> Settings, bottom). */
+.rows .logout .k { color: #c62828; }

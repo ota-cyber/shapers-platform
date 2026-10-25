@@ -326,13 +326,38 @@ function AddProject({ onClose }: { onClose: () => void }) {
 }
 
 function Approvals() {
-  const { db, member, resolveBackfill, resolvePause, resolveGraduation } = useApp();
+  const { db, member, resolveBackfill, resolvePause, resolveGraduation, approveJoin, declineJoin } = useApp();
+  const joins = db.joinRequests ?? [];
+  const buddies = db.members.filter((m) => m.tier !== "GO!").sort((a, b) => a.name.localeCompare(b.name));
+  const [buddyFor, setBuddyFor] = useState<Record<string, string>>({});
   const back = db.backfills.filter((b) => b.status === "pending");
   const pauses = db.pauses.filter((p) => p.status === "requested");
   const grads = db.members.filter((m) => m.graduation);
   return (
     <>
       <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, pause requests, and buddies graduating new members. Everything else is trusted by default.</p></div>
+      {joins.length > 0 && (
+        <>
+          <div className="group-h">Asking to join</div>
+          <div className="rows">
+            {joins.map((r) => (
+              <div key={r.id} style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                <div className="grow">
+                  <div className="k">{r.name}</div>
+                  <div className="small muted">{r.email} · signed in {fmt.short(r.at.slice(0, 10))}. Joins as GO! and starts onboarding.</div>
+                </div>
+                <select value={buddyFor[r.id] ?? ""} onChange={(e) => setBuddyFor({ ...buddyFor, [r.id]: e.target.value })}
+                  style={{ border: 0, background: "transparent", fontFamily: "var(--mono)", fontSize: 13 }}>
+                  <option value="">No buddy yet</option>
+                  {buddies.map((m) => <option key={m.id} value={m.id}>Buddy: {m.name}</option>)}
+                </select>
+                <button className="btn-s on" onClick={() => approveJoin(r.id, buddyFor[r.id] || null)}>Approve</button>
+                <button className="btn-s" onClick={() => declineJoin(r.id)}>Decline</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <div className="group-h">Hours back-filled</div>
       <div className="rows">
         {back.map((b) => (

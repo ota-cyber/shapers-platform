@@ -75,15 +75,6 @@ function Settings() {
         <Link href="/you"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
       </div>
-      {authEmail && (
-        <>
-          <div className="group-h">Account</div>
-          <div className="rows">
-            <div><span className="k">Signed in as</span><span className="v">{authEmail}</span></div>
-            <button onClick={signOut} style={{ width: "100%" }}><span className="k" style={{ textAlign: "left" }}>Sign out</span><span className="go">→</span></button>
-          </div>
-        </>
-      )}
       <div className="group-h">Demo</div>
       <div className="rows">
         <label style={{ width: "100%" }}>
@@ -110,6 +101,17 @@ function Settings() {
           </button>
         )}
       </div>
+      {backendEnabled && (
+        <>
+          <div className="group-h">Account</div>
+          <div className="rows">
+            {authEmail && <div><span className="k">Signed in as</span><span className="v">{authEmail}</span></div>}
+            <button className="logout" onClick={signOut} style={{ width: "100%" }}>
+              <span className="k" style={{ textAlign: "left" }}>Log out</span>
+            </button>
+          </div>
+        </>
+      )}
       <div style={{ height: 40 }} />
       {pause && <PauseSheet onClose={() => setPause(false)} onSave={(f, t, r) => { requestPause(f, t, r); setPause(false); }} today={today} tier={me.tier} />}
     </>

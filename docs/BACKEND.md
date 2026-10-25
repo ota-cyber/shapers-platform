@@ -41,6 +41,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 | Tick a step | `rpc("complete_onboarding_step", { p_step, p_done: true })`. Auto steps tick themselves; admin-only steps need an admin; a buddy can pass `p_member` |
 | Badges | `from("member_badges").select("*").eq("member_id", me)` → `badge, title, description, earned` |
 | Tier rules (hours and texts) | `from("tiers").select("*").order("sort")` |
+| Join requests (admin) | `from("join_requests").select("*").eq("status", "pending")`, `rpc("approve_join_request", { p_request, p_buddy? })`, `rpc("decline_join_request", { p_request })`; a non-member calls `rpc("request_to_join")` |
+| Starter history | `rpc("seed_starter_history")`: self, once, at the end of the onboarding screens |
 | Restart onboarding (testing) | `rpc("restart_onboarding", { p_member? })`: self or admin; never an admin account |
 
 Suggested logic: show the onboarding checklist as the home screen while `onboarded` is false, then the everyday dashboard.

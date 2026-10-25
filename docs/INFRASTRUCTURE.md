@@ -80,6 +80,7 @@ Needs: Node 18+, the [Supabase CLI](https://supabase.com/docs/guides/cli), a Sup
 - New migrations: `supabase db push` (without `--include-seed`, so live data stays).
 - Tier rules (hours, rule texts, notice hours), onboarding and setup steps and thresholds (`app_settings`) are rows in the
   database; edit them in the Supabase table editor and the app shows the change on the next load.
+- New people: anyone can sign in with Google; they appear in Team → Approvals and become GO! members when approved.
 - Testing onboarding again: sign in as a GO! test member → You → Settings → **Restart my onboarding** (RPC
   `restart_onboarding`; admins can't be restarted).
 

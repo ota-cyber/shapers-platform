@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { ONBOARDING_STEPS } from "@/lib/seed";
@@ -15,14 +15,25 @@ import { fmt } from "@/lib/dates";
 
 export default function Onboarding() {
   const router = useRouter();
-  const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn } = useApp();
+  const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn, finishOnboardingFlow, playIntro, introPlayed } = useApp();
   const done = onboardingDone(me);
   // Existing members (onboarding null) get a read-only refresher: nothing is marked.
   const refresher = me.onboarding === null;
-  const [i, setI] = useState(() => (refresher ? 0 : firstOpenScreen(done)));
+  // Right after a GO! sign-in the flow always plays from the first screen.
+  const [i, setI] = useState(() => (refresher || playIntro ? 0 : firstOpenScreen(done)));
   const [picked, setPicked] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
-  const [replay, setReplay] = useState(false);
+  const [replay, setReplay] = useState(playIntro);
+  useEffect(() => {
+    if (playIntro) introPlayed();
+  }, [playIntro, introPlayed]);
+  // The last screen is done: give the new profile its starter history (backend mode, once).
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!finished || refresher || seeded.current) return;
+    seeded.current = true;
+    finishOnboardingFlow();
+  }, [finished, refresher, finishOnboardingFlow]);
   const screen: Screen = SCREENS[i];
   const next = () => (i < SCREENS.length - 1 ? setI(i + 1) : setFinished(true));
   const mark = (...ids: OnboardingStepId[]) => !refresher && ids.forEach((id) => completeStep(me.id, id));

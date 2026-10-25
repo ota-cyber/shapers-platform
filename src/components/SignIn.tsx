@@ -18,6 +18,7 @@ export function SignIn(props: {
   onGoogle: () => void;
   onDemo: (id: string) => void;
   onSignOut: () => void;
+  onRetry: () => void;
 }) {
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg)", display: "grid", placeItems: "center", padding: "40px var(--gutter, 16px)" }}>
@@ -26,11 +27,15 @@ export function SignIn(props: {
 
         {props.notMemberEmail ? (
           <>
-            <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>You&apos;re not on the roster yet</h1>
+            <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>Your request is in</h1>
             <p className="mono-lc" style={{ color: "var(--muted)", margin: "0 0 28px" }}>
-              {props.notMemberEmail} isn&apos;t a Shapers member here. Ask an admin to add you (Team → Quick add), then sign in again.
+              {props.notMemberEmail} is waiting for an admin to approve it. Once approved you join as a Shapers GO! member and
+              start with onboarding.
             </p>
-            <button className="btn outline block" onClick={props.onSignOut} disabled={props.busy}>Use another account</button>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button className="btn block" onClick={props.onRetry} disabled={props.busy}>Check again</button>
+              <button className="btn outline block" onClick={props.onSignOut} disabled={props.busy}>Use another account</button>
+            </div>
           </>
         ) : (
           <>
