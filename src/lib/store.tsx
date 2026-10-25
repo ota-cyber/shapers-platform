@@ -9,8 +9,11 @@ import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority,
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
+import { api, backendEnabled, loadDb, signInAs } from "./backend";
 
 const KEY = "shapers-ui-v5";
+const PREFS_KEY = "shapers-ui-prefs";
+const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
 
@@ -84,8 +87,16 @@ export function useApp(): Ctx {
 const uid = () => Math.random().toString(36).slice(2, 9);
 const AVATARS = ["bust", "stone", "apple", "moon", "dove", "hands", "compass", "sprout", "book", "key"];
 
+function loadPrefs(): Prefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_PREFS;
+}
+
 function load(): { db: Db; prefs: Prefs } {
-  const fresh = { db: seedDb(), prefs: { meId: "petra.jerman", liveMeeting: false } };
+  const fresh = { db: seedDb(), prefs: DEFAULT_PREFS };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return { ...fresh, ...JSON.parse(raw) };
@@ -96,17 +107,51 @@ function load(): { db: Db; prefs: Prefs } {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{ db: Db; prefs: Prefs } | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [error, setError] = useState<string | null>(null);
+
+  // Backend mode: the database is the truth. Reload after every write and every minute.
+  const reload = useCallback(() => {
+    if (!backendEnabled) return Promise.resolve();
+    return loadDb()
+      .then((db) => setState((s) => (s ? { ...s, db } : s)))
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  /** Sends one action to the backend; on refusal shows why, then shows the true state again. */
+  const remote = useCallback(
+    (call: () => Promise<unknown>) => {
+      if (!backendEnabled) return;
+      call()
+        .then(() => setError(null))
+        .catch((e: Error) => setError(e.message))
+        .finally(() => void reload());
+    },
+    [reload],
+  );
 
   useEffect(() => {
-    setState(load());
+    if (backendEnabled) {
+      const prefs = loadPrefs();
+      signInAs(prefs.meId)
+        .then(loadDb)
+        .then((db) => setState({ db, prefs }))
+        .catch((e: Error) => setError(e.message));
+    } else {
+      setState(load());
+    }
     const t = setInterval(() => setNow(new Date()), 15_000);
-    return () => clearInterval(t);
-  }, []);
+    const r = backendEnabled ? setInterval(() => void reload(), 60_000) : undefined;
+    return () => {
+      clearInterval(t);
+      if (r) clearInterval(r);
+    };
+  }, [reload]);
 
   useEffect(() => {
     if (!state) return;
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      if (backendEnabled) localStorage.setItem(PREFS_KEY, JSON.stringify(state.prefs));
+      else localStorage.setItem(KEY, JSON.stringify(state));
     } catch {}
   }, [state]);
 
@@ -170,7 +215,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return days >= STALL_DAYS ? days : null;
     };
 
-    return {
+    const base: Ctx = {
       db,
       prefs,
       now,
@@ -361,10 +406,78 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           m.graduation = null;
         }),
     };
-  }, [state, now, mutate]);
+    if (!backendEnabled) return base;
 
-  if (!value) return <div className="boot" />;
-  return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
+    // Backend mode: every action still updates the screen at once, then goes to the
+    // database, which enforces the rules; the reload afterwards shows the true state.
+    const overrides: Partial<Ctx> = {
+      setPrefs: (p) => {
+        base.setPrefs(p);
+        if (p.meId && p.meId !== prefs.meId) signInAs(p.meId).then(reload).catch((e: Error) => setError(e.message));
+      },
+      reset: () => void reload(),
+      clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
+      stillWorking: () => { base.stillWorking(); remote(api.stillWorking); },
+      clockOut: () => { base.clockOut(); remote(api.clockOut); },
+      logHours: (date, hours, note = "") => {
+        const r = base.logHours(date, hours, note);
+        remote(() => api.logHours(date, hours, note));
+        return r;
+      },
+      resolveBackfill: (id, approve) => { base.resolveBackfill(id, approve); remote(() => api.resolveBackfill(id, approve)); },
+      updateTask: (id, patch, what) => { base.updateTask(id, patch, what); remote(() => api.updateTask(id, patch)); },
+      addTask: (t) => { base.addTask(t); remote(() => api.addTask(t)); },
+      moveTask: (id, to) => {
+        // Send only what actually changes, so members aren't refused for an unchanged owner or project.
+        const t = db.tasks.find((x) => x.id === id);
+        const patch: Partial<Task> = {};
+        if (t && to.status && to.status !== t.status) patch.status = to.status;
+        if (t && to.projectId && to.projectId !== t.projectId) patch.projectId = to.projectId;
+        if (t && to.assigneeId !== undefined && to.assigneeId !== t.assigneeId) patch.assigneeId = to.assigneeId;
+        base.moveTask(id, to);
+        remote(() => api.updateTask(id, patch));
+      },
+      setTaskDates: (id, start, due) => { base.setTaskDates(id, start, due); remote(() => api.updateTask(id, { start, due })); },
+      addProject: (p) => { base.addProject(p); remote(() => api.addProject(p)); },
+      meetingClockIn: (meetingId, st) => { base.meetingClockIn(meetingId, st); remote(() => api.meetingClockIn(meetingId, st)); },
+      recordAttendance: (meetingId, memberId, st) => {
+        base.recordAttendance(meetingId, memberId, st);
+        remote(() => api.recordAttendance(meetingId, memberId, st));
+      },
+      announceAbsence: (meetingId) => {
+        const excused = base.announceAbsence(meetingId);
+        remote(() => api.announceAbsence(meetingId));
+        return excused;
+      },
+      completeStep: (memberId, step, v = true) => { base.completeStep(memberId, step, v); remote(() => api.completeStep(memberId, step, v)); },
+      joinProject: (memberId, projectId) => { base.joinProject(memberId, projectId); remote(() => api.joinProject(memberId, projectId)); },
+      requestPause: (from, to, reason) => { base.requestPause(from, to, reason); remote(() => api.requestPause(from, to, reason)); },
+      resolvePause: (id, approve) => { base.resolvePause(id, approve); remote(() => api.resolvePause(id, approve)); },
+      setTier: (memberId, tier) => { base.setTier(memberId, tier); remote(() => api.setTier(memberId, tier)); },
+      addMember: (m) => { base.addMember(m); remote(() => api.addMember(m)); },
+      importRoster: (rows) => {
+        const r = base.importRoster(rows);
+        remote(() => api.importRoster(rows));
+        return r;
+      },
+      completeSetup: (memberId, step, v = true) => { base.completeSetup(memberId, step, v); remote(() => api.completeSetup(step, v)); },
+      proposeGraduation: (memberId) => { base.proposeGraduation(memberId); remote(() => api.proposeGraduation(memberId)); },
+      resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
+    };
+    return { ...base, ...overrides };
+  }, [state, now, mutate, remote, reload]);
+
+  if (!value) return error ? <div className="boot backend-error">{error}</div> : <div className="boot" />;
+  return (
+    <AppCtx.Provider value={value}>
+      {children}
+      {error && (
+        <div role="alert" className="backend-error" onClick={() => setError(null)}>
+          {error}
+        </div>
+      )}
+    </AppCtx.Provider>
+  );
 }
 
 function addHours(db: Db, memberId: string, date: string, hours: number) {

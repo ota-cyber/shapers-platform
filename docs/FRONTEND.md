@@ -2,7 +2,7 @@
 
 > **Backend builders: read [PERMISSIONS.md](PERMISSIONS.md) first.** GO! and Impact members may only edit tasks assigned to them; Core members and admins can edit every task. Admin is a separate role, unrelated to tier. The backend must enforce this.
 
-Next.js 15 (App Router) + TypeScript, plain CSS. No backend yet: every screen runs on a client-side store seeded from the hackathon sandbox. The backend replaces the store's data and actions; the screens don't change.
+Next.js 15 (App Router) + TypeScript, plain CSS. The store (`src/lib/store.tsx`) runs on Supabase when `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set (`src/lib/backend.ts` loads the `Db` shape and sends each action as an RPC; the database enforces the rules), and on a client-side demo seed otherwise. In backend mode "View as" signs in as that member with the demo password, and a refused action shows the database's message at the bottom of the screen.
 
 ```bash
 npm install

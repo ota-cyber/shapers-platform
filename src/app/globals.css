@@ -637,3 +637,19 @@ a.lb-row:hover { background: #f1f1f1; }
 /* landing: negative space above the greeting (revertable: this block only) */
 .home .glance { padding-top: 12vh; }
 @media (min-width: 1000px) { .home .glance { padding-top: 22vh; } }
+
+/* Backend refusals and connection errors (store.tsx). Tap to dismiss. */
+.backend-error {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: min(92vw, 520px);
+  padding: 10px 14px;
+  background: var(--fg, #111);
+  color: var(--bg, #fff);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}

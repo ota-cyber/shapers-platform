@@ -8,7 +8,7 @@ One page: services, how they connect, environment variables, and how to deploy f
 |---|---|---|
 | **Supabase** | Postgres (all data, rules and analytics as SQL), Auth (sign-in), one Edge Function (`sync-calendar`) | Free |
 | **Google Calendar** | Source of all meetings. Read only, through the public Calendar API with an API key | Free |
-| **Frontend host** | Serves the web app (see the `UI` branch) | Free |
+| **Vercel** | Hosts the Next.js web app (`src/`) | Free |
 
 ```
 Browser ──supabase-js (anon key + user session)──► Supabase API ──► Postgres (RLS on every table)
@@ -34,14 +34,16 @@ Nothing writes to Google Calendar or Slack.
 
 | Name | Where | Value |
 |---|---|---|
-| `SUPABASE_URL` | frontend, scripts | Project URL (Supabase → Project Settings → API) |
-| `SUPABASE_ANON_KEY` | frontend, scripts | Public anon key (same page) |
+| `NEXT_PUBLIC_SUPABASE_URL` | frontend (Vercel) | Project URL (Supabase → Project Settings → API) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | frontend (Vercel) | Public anon key (same page) |
+| `NEXT_PUBLIC_DEMO_PASSWORD` | frontend (Vercel), optional | Demo password used by "View as" (default `shapers-demo`) |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | scripts | Same values as above, for the scripts |
 | `SUPABASE_SERVICE_ROLE_KEY` | scripts only, never the frontend | Service role key (same page) |
 | `DEMO_PASSWORD` | scripts | Password given to every sandbox sign-in |
 | `GOOGLE_CALENDAR_ID` | Edge Function secret | Calendar ID of the imported sandbox calendar |
 | `GOOGLE_API_KEY` | Edge Function secret | Google Cloud API key with the Calendar API enabled |
 
-The frontend may need a framework prefix (`NEXT_PUBLIC_…`, `VITE_…`); see the `UI` branch.
+Without `NEXT_PUBLIC_SUPABASE_URL` the web app runs on built-in demo data in the browser.
 
 ## Deploy from zero
 
@@ -64,7 +66,8 @@ Needs: Node 18+, the [Supabase CLI](https://supabase.com/docs/guides/cli), a Sup
    ```
 4. **Check it.** `SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... DEMO_PASSWORD=... node scripts/smoke-test.mjs`
    (writes test data; run it on a fresh project or skip it).
-5. **Frontend.** Deploy the web app with `SUPABASE_URL` and `SUPABASE_ANON_KEY` set.
+5. **Frontend.** Import the repository into Vercel (framework: Next.js, defaults are fine) and set
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_DEMO_PASSWORD`. Deploy.
    For Google sign-in, enable Google under Supabase → Authentication → Providers and add the site URL.
 
 ## Local development

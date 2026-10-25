@@ -545,9 +545,6 @@ begin
   if not (select onboarding_active from members where id = target) then
     raise exception 'This member is not onboarding' using errcode = '22023';
   end if;
-  if st.auto then
-    raise exception 'This step completes itself' using errcode = '22023';
-  end if;
   -- Members tick their own steps, buddies their mentees', admins anything.
   if not public.is_admin() and (
        st.admin_only
