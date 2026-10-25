@@ -175,7 +175,6 @@ export function TopPerformers() {
           </Link>
         ))}
       </div>
-      <p className="small muted" style={{ marginTop: 8 }}>Finished task points plus 5 per week at commitment, last six weeks.</p>
       <Link href="/team?view=leaderboard" className="btn" style={{ marginTop: 18 }}>Review everyone&apos;s stats</Link>
     </section>
   );
