@@ -87,6 +87,9 @@ interface Ctx {
   completeSetup: (memberId: string, step: SetupStepId, value?: boolean) => void;
   proposeGraduation: (memberId: string) => void;
   resolveGraduation: (memberId: string, approve: boolean) => void;
+  /** Admin: remove someone from Shapers. Their email is blacklisted until an admin restores it. */
+  removeMember: (memberId: string) => void;
+  restoreMember: (email: string) => void;
   liveMeetingId: string | null;
   onboardingDone: (m: Member) => Record<OnboardingStepId, boolean>;
   /** null when the member has nothing to set up */
@@ -154,7 +157,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
   // Backend mode only: who is signed in. "signed-out" and "not-member" show the sign-in screen.
-  const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
+  const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "removed" | "ready"; email: string | null }>({ status: "loading", email: null });
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   // A new member's every sign-in plays the onboarding from the start until they finish it.
@@ -221,7 +224,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Anyone who signs in joins as a GO! member and starts onboarding; an admin approves at the end.
       let handle = await myHandle(email);
       if (!handle) {
-        await api.joinPlatform().catch(() => undefined);
+        // A blacklisted email is refused here: removed from Shapers.
+        const refused = await api.joinPlatform().then(() => false, (e: Error) => /removed from shapers/i.test(e.message));
+        if (refused) return setAuth({ status: "removed", email });
         handle = await myHandle(email);
       }
       if (!handle) return setAuth({ status: "not-member", email });
@@ -594,6 +599,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (approve && m.graduation) m.onboarding = null;
           m.graduation = null;
         }),
+      removeMember: (memberId) =>
+        mutate((db) => {
+          const m = db.members.find((x) => x.id === memberId);
+          if (!me.admin || !m || m.id === me.id) return;
+          db.members = db.members.filter((x) => x.id !== m.id);
+          db.blacklist = [...(db.blacklist ?? []).filter((b) => b.email !== m.email), { email: m.email, name: m.name, removedBy: me.id, at: now.toISOString(), member: m }];
+          // Their open work goes back to the pool; a running clock-in stops.
+          db.tasks.forEach((t) => { if (t.assigneeId === m.id && t.status !== "done") t.assigneeId = null; });
+          db.members.forEach((x) => { if (x.buddyId === m.id) x.buddyId = null; });
+          db.sessions = db.sessions.filter((x) => x.memberId !== m.id);
+        }),
+      restoreMember: (email) =>
+        mutate((db) => {
+          const b = (db.blacklist ?? []).find((x) => x.email === email);
+          if (!me.admin || !b) return;
+          db.blacklist = db.blacklist!.filter((x) => x.email !== email);
+          if (b.member && !db.members.some((x) => x.id === b.member!.id)) db.members.push(b.member);
+        }),
     };
     if (!backendEnabled) return base;
 
@@ -669,13 +692,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeSetup: (memberId, step, v = true) => { base.completeSetup(memberId, step, v); remote(() => api.completeSetup(step, v)); },
       proposeGraduation: (memberId) => { base.proposeGraduation(memberId); remote(() => api.proposeGraduation(memberId)); },
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
+      removeMember: (memberId) => { remote(() => api.removeMember(memberId)); base.removeMember(memberId); },
+      restoreMember: (email) => { base.restoreMember(email); remote(() => api.restoreMember(email)); },
     };
     return { ...base, ...overrides };
   }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, introRun, start, lastHour]);
 
-  if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
+  if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member" || auth.status === "removed")) {
     return (
       <SignIn
+        removed={auth.status === "removed" ? auth.email ?? "This account" : undefined}
         notMemberEmail={auth.status === "not-member" ? auth.email : null}
         busy={busy}
         error={error}
@@ -690,6 +716,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }
   if (!value) return error ? <div className="boot backend-error">{error}</div> : <div className="boot" />;
+  // Demo: "View as" someone an admin removed shows what they'd see: locked out.
+  const removedMe = !backendEnabled && state && !value.db.members.some((m) => m.id === state.prefs.meId)
+    ? value.db.blacklist?.find((b) => b.member?.id === state.prefs.meId) : undefined;
+  if (removedMe) {
+    const admin = value.db.members.find((m) => m.admin);
+    return (
+      <SignIn
+        removed={removedMe.email}
+        notMemberEmail={null}
+        busy={false}
+        error={null}
+        onGoogle={() => {}}
+        onDemo={(id) => value.setPrefs({ meId: id })}
+        onSignOut={() => admin && value.setPrefs({ meId: admin.id })}
+        onRetry={() => {}}
+      />
+    );
+  }
   // Onboarding without a buddy: nothing to do until an admin assigns one.
   if (backendEnabled && value.me.onboarding !== null && !value.me.buddyId && !value.me.admin) {
     return (

@@ -326,7 +326,7 @@ function AddProject({ onClose }: { onClose: () => void }) {
 }
 
 function Approvals() {
-  const { db, member, resolveBackfill, resolvePause, resolveGraduation, approveJoin, declineJoin, setBuddy } = useApp();
+  const { db, member, resolveBackfill, resolvePause, resolveGraduation, approveJoin, declineJoin, setBuddy, restoreMember } = useApp();
   const joins = db.joinRequests ?? [];
   const buddyless = db.members.filter((m) => m.onboarding !== null && !m.buddyId && !m.admin);
   const buddies = db.members.filter((m) => m.tier !== "GO!").sort((a, b) => a.name.localeCompare(b.name));
@@ -421,6 +421,19 @@ function Approvals() {
           </div>
         ))}
         {!grads.length && <div><span className="k muted">Nothing pending</span></div>}
+      </div>
+      <div className="group-h">Blacklist</div>
+      <div className="rows">
+        {(db.blacklist ?? []).map((b) => (
+          <div key={b.email}>
+            <div className="grow">
+              <div className="k">{b.name}</div>
+              <div className="small muted">{b.email} · removed {fmt.short(b.at.slice(0, 10))}{b.removedBy ? ` by ${member(b.removedBy)?.name ?? "an admin"}` : ""}. Can&apos;t sign in.</div>
+            </div>
+            <button className="btn-s on" onClick={() => restoreMember(b.email)}>Restore</button>
+          </div>
+        ))}
+        {!(db.blacklist ?? []).length && <div><span className="k muted">Nobody</span></div>}
       </div>
     </>
   );

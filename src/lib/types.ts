@@ -160,6 +160,17 @@ export interface Db {
   absences: AbsenceNotice[];
   /** People who signed in with Google but aren't on the roster yet (admins only). */
   joinRequests?: JoinRequest[];
+  /** Removed from Shapers: these emails can't get in until an admin restores them (admins only). */
+  blacklist?: BlacklistEntry[];
+}
+
+export interface BlacklistEntry {
+  email: string;
+  name: string;
+  removedBy: string | null;
+  at: string;
+  /** demo mode keeps the member so a restore brings them back as they were */
+  member?: Member;
 }
 
 /** An admin approves it and the person becomes a GO! member who starts onboarding. */

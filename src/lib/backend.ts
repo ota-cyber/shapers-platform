@@ -148,7 +148,7 @@ export async function loadDb(): Promise<Db> {
   const nowIso = new Date().toISOString();
   const [
     members, tiers, seriesMembers, onboarding, setup, interest, hours, meetings, attendance,
-    projects, tasks, events, sessions, manual, pauses, absences, joinRequests, progress,
+    projects, tasks, events, sessions, manual, pauses, absences, joinRequests, progress, blacklist,
   ] = await Promise.all([
     sb!.from("members").select("id,handle,name,email,tier,is_admin,joined_on,tier_since,buddy_id,avatar,onboarding_active,needs_setup,graduation_proposed_by,graduation_proposed_at").eq("active", true).order("created_at"),
     sb!.from("tiers").select("key,weekly_hours"),
@@ -168,6 +168,9 @@ export async function loadDb(): Promise<Db> {
     sb!.from("absence_notices").select("member_id,meeting_id,created_at,in_time"),
     sb!.from("join_requests").select("id,name,email,created_at").eq("status", "pending").order("created_at"),
     sb!.from("onboarding_progress").select("member_id,step_key,done"),
+    // Admins only (RLS); before the blacklist migration runs this table doesn't exist, so it reads as empty.
+    sb!.from("blacklist").select("email,name,removed_by,removed_at").order("removed_at", { ascending: false })
+      .then((r) => (r.error ? { data: [], error: null } : r)),
   ]).then((rs) => rs.map((r) => must<any[]>(r as any)));
 
   ids.member.clear();
@@ -273,6 +276,7 @@ export async function loadDb(): Promise<Db> {
       .filter((a: any) => meetingUi.has(a.meeting_id))
       .map((a: any) => ({ memberId: memberHandle(a.member_id)!, meetingId: meetingUi.get(a.meeting_id).uiId, at: a.created_at, excused: a.in_time })),
     joinRequests: joinRequests.map((r: any) => ({ id: r.id, name: r.name, email: r.email, at: r.created_at })),
+    blacklist: blacklist.map((b: any) => ({ email: b.email, name: b.name, removedBy: memberHandle(b.removed_by), at: b.removed_at })),
   };
   return out;
 }
@@ -352,6 +356,8 @@ export const api = {
   requestToJoin: () => rpc("request_to_join"),
   approveJoin: (id: string, buddyId: string | null) => rpc("approve_join_request", { p_request: id, p_buddy: memberUuid(buddyId) }),
   declineJoin: (id: string) => rpc("decline_join_request", { p_request: id }),
+  removeMember: (memberId: string) => rpc("remove_member", { p_member: memberUuid(memberId) }),
+  restoreMember: (email: string) => rpc("restore_member", { p_email: email }),
   /** End of the onboarding screens: starter history (once) and the welcome announcement. */
   onboardingScreensDone: () => rpc("onboarding_screens_done"),
   /** Back to day one of onboarding (testing and demos); the database refuses admin accounts. */

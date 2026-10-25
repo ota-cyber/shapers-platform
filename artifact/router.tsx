@@ -39,16 +39,19 @@ export function useSearchParams(): URLSearchParams {
   return new URLSearchParams(useHref().split("?")[1] ?? "");
 }
 
+// One stable object, like Next's router: effects that depend on it must not re-run every render.
+const router = {
+  push: (h: string) => navigate(h),
+  replace: (h: string) => navigate(h, true),
+  back: () => {
+    const prev = history.pop() ?? "/";
+    current = prev;
+    subs.forEach((f) => f());
+  },
+};
+
 export function useRouter() {
-  return {
-    push: (h: string) => navigate(h),
-    replace: (h: string) => navigate(h, true),
-    back: () => {
-      const prev = history.pop() ?? "/";
-      current = prev;
-      subs.forEach((f) => f());
-    },
-  };
+  return router;
 }
 
 export function useParams<T extends Record<string, string>>(): T {

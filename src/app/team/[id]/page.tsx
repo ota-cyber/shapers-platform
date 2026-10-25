@@ -18,8 +18,9 @@ import { Avatar, Meter, Signs, first, handle } from "@/components/ui";
 export default function MemberPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { member, standingOf, me, db, today, onboardingDone, setTier, completeStep, stalledDays, proposeGraduation, resolveGraduation } = useApp();
+  const { member, standingOf, me, db, today, onboardingDone, setTier, completeStep, stalledDays, proposeGraduation, resolveGraduation, removeMember } = useApp();
   const [pendingTier, setPendingTier] = useState<TierId | null>(null);
+  const [confirmOut, setConfirmOut] = useState(false);
   const m = member(id);
   if (!m) return <div className="empty">No such member.</div>;
   const s = standingOf(m.id);
@@ -170,6 +171,24 @@ export default function MemberPage() {
             </>
           )}
         </>
+      )}
+      {me.admin && m.id !== me.id && (
+        <div className="get-out">
+          <button className="btn block danger" onClick={() => setConfirmOut(true)}>Get the fuck out!</button>
+        </div>
+      )}
+      {confirmOut && (
+        <div className="overlay mid" onClick={() => setConfirmOut(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-labelledby="out-h">
+            <div className="h-l" id="out-h">Remove {first(m)} from Shapers?</div>
+            <p className="small" style={{ marginTop: 12 }}>
+              {m.name} loses access straight away and {m.email} is blacklisted, so they can&apos;t sign back in. Their open tasks go back to the pool.
+              You can undo it under Team → Approvals → Blacklist.
+            </p>
+            <button className="btn block danger" style={{ marginTop: 22 }} onClick={() => { removeMember(m.id); router.push("/team"); }}>Yes, get them out</button>
+            <button className="btn outline block" style={{ marginTop: 8 }} onClick={() => setConfirmOut(false)}>Cancel</button>
+          </div>
+        </div>
       )}
     </div>
   );

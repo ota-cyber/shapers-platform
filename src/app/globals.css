@@ -712,3 +712,6 @@ button.wk-bar { border: 0; text-align: left; cursor: pointer; font: inherit; fon
 .ob-stage .ob-w, .ob-stage .ob-c { display: inline-block; }
 .ob-progress { height: 1px; margin: 0 var(--gutter); background: color-mix(in srgb, currentColor 15%, transparent); }
 .ob-progress span { display: block; height: 100%; background: currentColor; transform-origin: 0 50%; }
+/* Admin: remove someone from Shapers (Team → member, bottom). */
+.get-out { margin: 48px 0 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.btn.danger { background: #c62828; border-color: #c62828; color: #fff; }

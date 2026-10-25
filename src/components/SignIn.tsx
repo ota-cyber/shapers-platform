@@ -18,6 +18,8 @@ const DEMO = [
 export function SignIn(props: {
   /** Signed in, onboarding, but no buddy yet: blocked until an admin assigns one. */
   waitingForBuddy?: string;
+  /** Removed from Shapers by an admin: this account can't get in. */
+  removed?: string;
   notMemberEmail: string | null;
   busy: boolean;
   error: string | null;
@@ -31,7 +33,18 @@ export function SignIn(props: {
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div className="wordmark" style={{ marginBottom: 36 }}>Global — Shapers</div>
 
-        {props.waitingForBuddy ? (
+        {props.removed ? (
+          <>
+            <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>You&apos;re out</h1>
+            <p className="mono-lc" style={{ color: "var(--muted)", margin: "0 0 28px" }}>
+              {props.removed} was removed from Shapers by an admin and can&apos;t sign in. If you think that&apos;s a mistake, talk to
+              an admin: they can restore you.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button className="btn outline block" onClick={props.onSignOut} disabled={props.busy}>Use another account</button>
+            </div>
+          </>
+        ) : props.waitingForBuddy ? (
           <>
             <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>Your buddy is being assigned</h1>
             <p className="mono-lc" style={{ color: "var(--muted)", margin: "0 0 28px" }}>

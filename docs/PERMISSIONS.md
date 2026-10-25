@@ -66,6 +66,7 @@ When a new member picks projects during onboarding, the app only records their c
 
 - **Ending onboarding:** only the member's **buddy** can propose it, and only once every onboarding step is done. Only an **admin** can confirm it (or send it back with "not yet"). Decided by Jure, 2026-10-24.
 - **Importing the roster** (existing members, deploy day) is admin-only, like adding a member.
+- **Removing someone from Shapers** (the button at the bottom of their profile) and **restoring them** (Team → Approvals → Blacklist) are admin-only. An admin can't remove themselves. A removed member's email is blacklisted: every query is refused (inactive member) and signing in again can't re-create them. Decided by Jure, 2026-10-25.
 - **Setup steps** (check tier, pick projects) are written by the member themselves. A member who thinks their tier is wrong is told to ask an admin; they cannot change it.
 
 ## Decided later

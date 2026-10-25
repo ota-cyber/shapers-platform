@@ -53,6 +53,7 @@ Tokens live at the top of `src/app/globals.css`. Fonts: Instrument Serif, Hanken
 | `completeSetup` | `PATCH /members/:id/setup` | self only; "first hour" is derived, not stored |
 | `proposeGraduation` | `POST /members/:id/graduation` | the member's buddy only, and only when every onboarding step is done |
 | `resolveGraduation` | `PATCH /members/:id/graduation` | admin; confirm sets `onboarding` to null, "not yet" clears the proposal |
+| `removeMember`, `restoreMember` | RPCs `remove_member`, `restore_member` (migration `20261025134000_blacklist.sql`) | admin, never yourself; removing deactivates the member, blacklists the email (sign-in refused, no re-join), unassigns open tasks |
 | `savePushSubscription`, `deletePushSubscription` | RPCs `save_push_subscription`, `delete_push_subscription` | self only; the sender and every trigger are in [NOTIFICATIONS.md](NOTIFICATIONS.md) |
 
 ## Onboarding system
