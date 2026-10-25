@@ -66,7 +66,7 @@ function Tasks() {
           {view === "board" && <Toggle value={mode} onChange={setMode} items={[["project", "By project"], ["person", "By person"], ["none", "No lanes"]]} />}
           <Toggle value={view} onChange={setView} items={[["board", "Board"], ["timeline", "Timeline"]]} />
           <Toggle value={scope} onChange={setScope} items={[["all", "Everyone"], ["mine", "Mine"]]} />
-          <button className="btn" onClick={() => setAdding(true)}>New task</button>
+          <button className="btn hide-m" onClick={() => setAdding(true)}>New task</button>
         </div>
       </div>
 
@@ -75,6 +75,8 @@ function Tasks() {
       ) : (
         <Timeline tasks={tasks} onOpen={setOpen} />
       )}
+
+      <button className="fab hide-d" onClick={() => setAdding(true)} aria-label="New task">+</button>
 
       {openId && <TaskSheet id={openId} onClose={() => setOpen(null)} />}
       {adding && <NewTask onClose={() => setAdding(false)} />}
