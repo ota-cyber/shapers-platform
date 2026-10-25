@@ -14,6 +14,12 @@ import { nextMeeting } from "@/lib/copy";
 import { fmt } from "@/lib/dates";
 
 export default function Onboarding() {
+  const { me, introRun } = useApp();
+  // A new intro run (sign-in) starts the flow over, even when this page is already open.
+  return <OnboardingFlow key={`${me.id}:${introRun}`} />;
+}
+
+function OnboardingFlow() {
   const router = useRouter();
   const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn, finishOnboardingFlow, playIntro, introPlayed } = useApp();
   const done = onboardingDone(me);

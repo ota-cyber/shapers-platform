@@ -17,6 +17,8 @@ import { SignIn } from "@/components/SignIn";
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
 const INTRO_KEY = "shapers-intro-played";
+/** Demo rule (Jure, 2026-10-25): these members get the onboarding on every sign-in and every load, no matter what. */
+export const ALWAYS_ONBOARD = ["lea.zorman"];
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
 const BLOCK_MS = 3_600_000;
 const PROMPT_BEFORE_MS = 5 * 60_000;
@@ -48,6 +50,8 @@ interface Ctx {
   finishOnboardingFlow: () => void;
   /** A new member who hasn't finished onboarding just signed in: the onboarding plays from its first screen. */
   playIntro: boolean;
+  /** Changes every time the intro starts, so the onboarding page starts over even if it is already open. */
+  introRun: number;
   introPlayed: () => void;
   clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
@@ -142,6 +146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // A new member's every sign-in plays the onboarding from the start until they finish it.
   // Once per sign-in per tab: a reload doesn't replay it, signing in again does.
   const [playIntro, setPlayIntro] = useState(false);
+  const [introRun, setIntroRun] = useState(0);
   const maybePlayIntro = useCallback(
     (db: Db, handle: string) => {
       // New members only, on every sign-in until they finish the onboarding screens
@@ -149,9 +154,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const m = db.members.find((x) => x.id === handle);
       let played: string | null = null;
       try { played = sessionStorage.getItem(INTRO_KEY); } catch {}
-      if (!m || m.onboarding === null || flowDone(onboardingStepsDone(db, m)) || played === handle) return;
+      const always = ALWAYS_ONBOARD.includes(handle);
+      if (!always && (!m || m.onboarding === null || flowDone(onboardingStepsDone(db, m)) || played === handle)) return;
       try { sessionStorage.setItem(INTRO_KEY, handle); } catch {}
       setPlayIntro(true);
+      setIntroRun((n) => n + 1);
       router.replace("/onboarding");
     },
     [router],
@@ -296,6 +303,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       authEmail: null,
       signOut: () => {},
       playIntro: false,
+      introRun: 0,
       introPlayed: () => {},
       approveJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
       declineJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
@@ -504,6 +512,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       authEmail: auth.email,
       signOut: doSignOut,
       playIntro,
+      introRun,
       introPlayed: () => setPlayIntro(false),
       approveJoin: (id, buddyId) => { base.approveJoin(id, buddyId); remote(() => api.approveJoin(id, buddyId)); },
       declineJoin: (id) => { base.declineJoin(id); remote(() => api.declineJoin(id)); },
@@ -569,7 +578,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
     };
     return { ...base, ...overrides };
-  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, start]);
+  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, introRun, start]);
 
   if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
     return (
