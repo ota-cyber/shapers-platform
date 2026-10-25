@@ -11,7 +11,7 @@ import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, tierRule, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 import { flowDone } from "./onboarding";
-import { api, backendEnabled, loadDb, myHandle, onTaskDone, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
+import { api, backendEnabled, loadDb, myHandle, onActivity, onTaskDone, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
 const KEY = "shapers-ui-v5";
@@ -47,6 +47,8 @@ interface Ctx {
   authEmail: string | null;
   signOut: () => void;
   approveJoin: (id: string, buddyId: string | null) => void;
+  /** Admin: give a member a buddy (members onboarding without one are blocked). */
+  setBuddy: (memberId: string, buddyId: string) => void;
   declineJoin: (id: string) => void;
   /** The onboarding screens are done (backend mode: adds the starter history). */
   finishOnboardingFlow: () => void;
@@ -176,6 +178,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const m = db.members.find((x) => x.id === handle);
       let played: string | null = null;
       try { played = sessionStorage.getItem(INTRO_KEY); } catch {}
+      if (m && m.onboarding !== null && !m.buddyId && !m.admin) return; // blocked until they get a buddy
       const always = ALWAYS_ONBOARD.includes(handle);
       if (!always && (!m || m.onboarding === null || flowDone(onboardingStepsDone(db, m)) || played === handle)) return;
       try { sessionStorage.setItem(INTRO_KEY, handle); } catch {}
@@ -211,11 +214,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const email = await sessionEmail();
       if (!email) return setAuth({ status: "signed-out", email: null });
-      const handle = await myHandle(email);
+      // Anyone who signs in joins as a GO! member and starts onboarding; an admin approves at the end.
+      let handle = await myHandle(email);
       if (!handle) {
-        await api.requestToJoin().catch(() => undefined);
-        return setAuth({ status: "not-member", email });
+        await api.joinPlatform().catch(() => undefined);
+        handle = await myHandle(email);
       }
+      if (!handle) return setAuth({ status: "not-member", email });
       const db = await loadDb();
       setState({ db, prefs: { ...loadPrefs(), meId: handle } });
       setAuth({ status: "ready", email });
@@ -275,6 +280,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const id = Date.now() + Math.random();
       setNotices((n) => [...n, { id, text: `${who} finished “${task?.title ?? "a task"}” · shared in Slack` }]);
       setTimeout(() => setNotices((n) => n.filter((x) => x.id !== id)), 6000);
+      void reload();
+    });
+  }, [signedIn, reload]);
+
+  // Announcements (someone finished the onboarding screens, someone completed onboarding).
+  useEffect(() => {
+    if (!backendEnabled || !signedIn) return;
+    return onActivity((text) => {
+      const id = Date.now() + Math.random();
+      setNotices((n) => [...n, { id, text: `${text.replace(/^\S+\s/, "")} · shared in Slack` }]);
+      setTimeout(() => setNotices((n) => n.filter((x) => x.id !== id)), 7000);
       void reload();
     });
   }, [signedIn, reload]);
@@ -362,6 +378,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       introRun: 0,
       introPlayed: () => {},
       approveJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
+      setBuddy: (memberId, buddyId) => mutate((db) => { const m = db.members.find((x) => x.id === memberId); if (m) m.buddyId = buddyId; }),
       declineJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
       finishOnboardingFlow: () => {},
       now,
@@ -585,8 +602,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       introRun,
       introPlayed: () => setPlayIntro(false),
       approveJoin: (id, buddyId) => { base.approveJoin(id, buddyId); remote(() => api.approveJoin(id, buddyId)); },
+      setBuddy: (memberId, buddyId) => { base.setBuddy(memberId, buddyId); remote(() => api.setBuddy(memberId, buddyId)); },
       declineJoin: (id) => { base.declineJoin(id); remote(() => api.declineJoin(id)); },
-      finishOnboardingFlow: () => remote(api.seedStarterHistory),
+      finishOnboardingFlow: () => remote(api.onboardingScreensDone),
       // "View as" signs in as that demo member (it ends a Google session).
       setPrefs: (p) => {
         base.setPrefs(p);
@@ -668,6 +686,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }
   if (!value) return error ? <div className="boot backend-error">{error}</div> : <div className="boot" />;
+  // Onboarding without a buddy: nothing to do until an admin assigns one.
+  if (backendEnabled && value.me.onboarding !== null && !value.me.buddyId && !value.me.admin) {
+    return (
+      <SignIn
+        waitingForBuddy={value.me.name}
+        notMemberEmail={null}
+        busy={busy}
+        error={null}
+        onGoogle={() => {}}
+        onDemo={demoSignIn}
+        onSignOut={doSignOut}
+        onRetry={() => void start()}
+      />
+    );
+  }
   return (
     <AppCtx.Provider value={value}>
       {children}

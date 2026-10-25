@@ -12,6 +12,8 @@ const DEMO = [
 ];
 
 export function SignIn(props: {
+  /** Signed in, onboarding, but no buddy yet: blocked until an admin assigns one. */
+  waitingForBuddy?: string;
   notMemberEmail: string | null;
   busy: boolean;
   error: string | null;
@@ -25,7 +27,19 @@ export function SignIn(props: {
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div className="wordmark" style={{ marginBottom: 36 }}>Global — Shapers</div>
 
-        {props.notMemberEmail ? (
+        {props.waitingForBuddy ? (
+          <>
+            <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>Your buddy is being assigned</h1>
+            <p className="mono-lc" style={{ color: "var(--muted)", margin: "0 0 28px" }}>
+              Welcome, {props.waitingForBuddy.split(" ")[0]}. Every new Shaper starts with a buddy. An admin is pairing you with
+              one now; you can start as soon as that&apos;s done.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <button className="btn block" onClick={props.onRetry} disabled={props.busy}>Check again</button>
+              <button className="btn outline block" onClick={props.onSignOut} disabled={props.busy}>Log out</button>
+            </div>
+          </>
+        ) : props.notMemberEmail ? (
           <>
             <h1 className="serif" style={{ fontSize: 38, lineHeight: 1.1, margin: "0 0 14px" }}>Your request is in</h1>
             <p className="mono-lc" style={{ color: "var(--muted)", margin: "0 0 28px" }}>

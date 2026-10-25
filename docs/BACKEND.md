@@ -42,7 +42,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 | Badges | `from("member_badges").select("*").eq("member_id", me)` → `badge, title, description, earned` |
 | Tier rules (hours and texts) | `from("tiers").select("*").order("sort")` |
 | Join requests (admin) | `from("join_requests").select("*").eq("status", "pending")`, `rpc("approve_join_request", { p_request, p_buddy? })`, `rpc("decline_join_request", { p_request })`; a non-member calls `rpc("request_to_join")` |
-| Starter history | `rpc("seed_starter_history")`: self, once, at the end of the onboarding screens |
+| Join on first sign-in | `rpc("join_platform")`: creates a GO! member with a buddy; idempotent |
+| End of onboarding screens | `rpc("onboarding_screens_done")`: starter history (once) + announcement |
+| Assign a buddy (admin) | `rpc("set_buddy", { p_member, p_buddy })` |
+| Announcements (live) | Realtime inserts on `activity` (also posted to Slack) |
 | Restart onboarding (testing) | `rpc("restart_onboarding", { p_member? })`: self or admin; never an admin account |
 
 Suggested logic: show the onboarding checklist as the home screen while `onboarded` is false, then the everyday dashboard.

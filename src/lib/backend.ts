@@ -76,6 +76,17 @@ export function onTaskDone(cb: (e: { taskId: string; actorId: string | null }) =
   return () => void sb!.removeChannel(channel);
 }
 
+/** Live: announcements (onboarding finished, completed) as they happen. */
+export function onActivity(cb: (text: string) => void): () => void {
+  const channel = sb!
+    .channel("activity")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity" }, (payload) => {
+      cb((payload.new as { text: string }).text);
+    })
+    .subscribe();
+  return () => void sb!.removeChannel(channel);
+}
+
 export async function signOut(): Promise<void> {
   await sb!.auth.signOut();
 }
@@ -137,7 +148,7 @@ export async function loadDb(): Promise<Db> {
   const nowIso = new Date().toISOString();
   const [
     members, tiers, seriesMembers, onboarding, setup, interest, hours, meetings, attendance,
-    projects, tasks, events, sessions, manual, pauses, absences, joinRequests,
+    projects, tasks, events, sessions, manual, pauses, absences, joinRequests, progress,
   ] = await Promise.all([
     sb!.from("members").select("id,handle,name,email,tier,is_admin,joined_on,tier_since,buddy_id,avatar,onboarding_active,needs_setup,graduation_proposed_by,graduation_proposed_at").eq("active", true).order("created_at"),
     sb!.from("tiers").select("key,weekly_hours"),
@@ -156,6 +167,7 @@ export async function loadDb(): Promise<Db> {
     sb!.from("pauses").select("id,member_id,starts_on,ends_on,reason,status").neq("status", "rejected"),
     sb!.from("absence_notices").select("member_id,meeting_id,created_at,in_time"),
     sb!.from("join_requests").select("id,name,email,created_at").eq("status", "pending").order("created_at"),
+    sb!.from("onboarding_progress").select("member_id,step_key,done"),
   ]).then((rs) => rs.map((r) => must<any[]>(r as any)));
 
   ids.member.clear();
@@ -174,6 +186,8 @@ export async function loadDb(): Promise<Db> {
   const weekly = Object.fromEntries(tiers.map((t: any) => [t.key, Number(t.weekly_hours)]));
   const projectName = new Map(projects.map((p: any) => [p.id, p.name]));
   const memberName = new Map(members.map((m: any) => [m.id, m.name]));
+  // Everyone onboarding with every step done waits for an admin (no buddy proposal needed).
+  const notDone = new Set(progress.filter((p: any) => !p.done).map((p: any) => p.member_id));
   const seriesOf = (memberId: string) => seriesMembers.filter((s: any) => s.member_id === memberId).map((s: any) => SERIES[s.series_id]);
 
   const out: Db = {
@@ -199,7 +213,9 @@ export async function loadDb(): Promise<Db> {
         onboardingProgressAt: lastStep ? isoDate(new Date(lastStep)) : undefined,
         graduation: m.graduation_proposed_by
           ? { proposedBy: memberHandle(m.graduation_proposed_by)!, at: isoDate(new Date(m.graduation_proposed_at)) }
-          : null,
+          : m.onboarding_active && progress.some((p: any) => p.member_id === m.id) && !notDone.has(m.id)
+            ? { proposedBy: "", at: lastStep ? isoDate(new Date(lastStep)) : m.joined_on }
+            : null,
         setup: m.needs_setup ? Object.fromEntries(setupSteps.map((s) => [s, true])) : null,
         wantsProjects: interest.filter((x: any) => x.member_id === m.id).map((x: any) => x.project_id),
       };
@@ -330,12 +346,14 @@ export const api = {
     step === "first-hour" ? Promise.resolve() : rpc("complete_setup", { p_step: step, p_done: done }),
   proposeGraduation: (memberId: string) => rpc("propose_graduation", { p_member: memberUuid(memberId) }),
   resolveGraduation: (memberId: string, approve: boolean) => rpc("resolve_graduation", { p_member: memberUuid(memberId), p_approve: approve }),
-  /** Signed in but not on the roster: ask to join (idempotent). */
+  /** Signed in but not on the roster: join as a GO! member who onboards (idempotent). */
+  joinPlatform: () => rpc("join_platform"),
+  setBuddy: (memberId: string, buddyId: string) => rpc("set_buddy", { p_member: memberUuid(memberId), p_buddy: memberUuid(buddyId) }),
   requestToJoin: () => rpc("request_to_join"),
   approveJoin: (id: string, buddyId: string | null) => rpc("approve_join_request", { p_request: id, p_buddy: memberUuid(buddyId) }),
   declineJoin: (id: string) => rpc("decline_join_request", { p_request: id }),
-  /** End of the onboarding screens: a few weeks of sample hours, meetings and tasks (once). */
-  seedStarterHistory: () => rpc("seed_starter_history"),
+  /** End of the onboarding screens: starter history (once) and the welcome announcement. */
+  onboardingScreensDone: () => rpc("onboarding_screens_done"),
   /** Back to day one of onboarding (testing and demos); the database refuses admin accounts. */
   restartOnboarding: (memberId: string) => rpc("restart_onboarding", { p_member: memberUuid(memberId) }),
 
