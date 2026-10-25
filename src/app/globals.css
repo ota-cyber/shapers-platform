@@ -645,5 +645,5 @@ body, .app { min-height: 100vh; min-height: 100dvh; }
 /* mobile: last box sits ~1.5 cm above the bottom of the page */
 @media (max-width: 999px) { .page { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); } }
 /* sheets and modals: scrolling stays inside, no bounce, page behind is frozen */
-.overlay, .sheet { overscroll-behavior: contain; }
+.overlay, .sheet, .modal { overscroll-behavior: none; }
 html:has(.overlay), body:has(.overlay) { overflow: hidden; }
