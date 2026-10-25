@@ -72,8 +72,13 @@ export const TIERS: TierRule[] = [
 
 export const tierRule = (id: TierId) => TIERS.find((t) => t.id === id)!;
 
-export const COMMUNITY_NOTICE_H = 72;
-export const PROJECT_NOTICE_H = 24;
+// Backend mode loads these from the tiers table (applyRules in backend.ts).
+export let COMMUNITY_NOTICE_H = 72;
+export let PROJECT_NOTICE_H = 24;
+export function setNoticeHours(community: number, project: number) {
+  COMMUNITY_NOTICE_H = community;
+  PROJECT_NOTICE_H = project;
+}
 
 export interface WeekRow {
   weekStart: string;

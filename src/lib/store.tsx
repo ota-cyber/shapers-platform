@@ -8,7 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
-import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
+import { standing, tierRule, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 import { api, backendEnabled, loadDb, myHandle, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
@@ -79,7 +79,6 @@ export interface RosterRow {
   tierSince?: string;
 }
 
-const WEEKLY: Record<Member["tier"], number> = { "GO!": 4, Impact: 10, Core: 70 };
 
 const AppCtx = createContext<Ctx | null>(null);
 
@@ -409,14 +408,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
           m.tier = tier;
-          m.weeklyHours = WEEKLY[tier];
+          m.weeklyHours = tierRule(tier).weeklyHours;
           m.tierSince = today;
         }),
       addMember: ({ name, email, buddyId, series }) =>
         mutate((db) => {
           const id = email.split("@")[0] || uid();
           db.members.push({
-            id, name, email, tier: "GO!", weeklyHours: 4, admin: false, series: ["Community", ...series.filter((s) => s !== "Community")],
+            id, name, email, tier: "GO!", weeklyHours: tierRule("GO!").weeklyHours, admin: false, series: ["Community", ...series.filter((s) => s !== "Community")],
             joined: today, tierSince: today, buddyId, avatar: "sprout", onboarding: {}, onboardingProgressAt: today, seeded: true,
           });
         }),
@@ -428,7 +427,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           fresh.forEach((r, i) => {
             const since = r.tierSince ?? today;
             db.members.push({
-              id: r.email.split("@")[0] || uid(), name: r.name, email: r.email, tier: r.tier, weeklyHours: WEEKLY[r.tier], admin: false,
+              id: r.email.split("@")[0] || uid(), name: r.name, email: r.email, tier: r.tier, weeklyHours: tierRule(r.tier).weeklyHours, admin: false,
               series: ["Community"], joined: since, tierSince: since, buddyId: null, avatar: AVATARS[i % AVATARS.length],
               onboarding: null, setup: {}, seeded: true,
             });
@@ -473,7 +472,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             .catch((e: Error) => setError(e.message));
         }
       },
-      reset: () => void reload(),
+      // The demo reset restarts my onboarding from day one (the database refuses admins).
+      reset: () => remote(() => api.restartOnboarding(me.id)),
       clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
       stillWorking: () => { base.stillWorking(); remote(api.stillWorking); },
       clockOut: () => { base.clockOut(); remote(api.clockOut); },

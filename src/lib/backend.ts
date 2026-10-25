@@ -11,6 +11,8 @@ import type {
   AttendanceState, Db, Member, OnboardingStepId, Priority, Series, SetupStepId, Task, TaskSize, TaskStatus, TierId,
 } from "./types";
 import { isoDate } from "./dates";
+import { TIERS, setNoticeHours } from "./tiers";
+import { ONBOARDING_STEPS, SETUP_STEPS, setStallDays } from "./seed";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -85,7 +87,41 @@ export async function syncCalendar(): Promise<boolean> {
 // ------------------------------------------------------------------ load
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/** Rules the screens show (tier rules, onboarding and setup steps, thresholds) come from
+ *  the database. The UI reads them from shared modules, so they are updated in place. */
+async function applyRules(): Promise<void> {
+  const [tiers, steps, setup, settings] = await Promise.all([
+    sb!.from("tiers").select("*").order("sort"),
+    sb!.from("onboarding_steps").select("key,title,description,stage,auto").order("sort"),
+    sb!.from("setup_steps").select("key,title,line,auto").order("sort"),
+    sb!.from("app_settings").select("stall_days").maybeSingle(),
+  ]).then((rs) => rs.map((r) => must<any>(r as any)));
+  for (const t of tiers) {
+    const rule = TIERS.find((r) => r.id === TIER[t.key]);
+    if (!rule) continue;
+    Object.assign(rule, {
+      name: t.name, weeklyHours: Number(t.weekly_hours), glyph: t.glyph ?? rule.glyph, who: t.who ?? rule.who,
+      presence: t.presence ?? rule.presence, notice: t.notice_text ?? rule.notice, pause: t.pause_text ?? rule.pause,
+      community: t.community_text ?? rule.community, absence: t.absence_text ?? rule.absence,
+      consequence: t.consequence_text ?? rule.consequence, monthsToNext: t.months_before_review,
+      next: t.next_tier ? TIER[t.next_tier] : null,
+    });
+  }
+  const go = tiers.find((t: any) => t.key === "go");
+  if (go) setNoticeHours(go.absence_notice_hours_community ?? 0, go.absence_notice_hours_project ?? 0);
+  if (steps.length)
+    ONBOARDING_STEPS.splice(0, ONBOARDING_STEPS.length, ...steps.map((s: any) => ({
+      id: s.key as OnboardingStepId, group: s.stage, title: s.title, line: s.description ?? "", ...(s.auto ? { auto: true } : {}),
+    })));
+  if (setup.length)
+    SETUP_STEPS.splice(0, SETUP_STEPS.length, ...setup.map((s: any) => ({
+      id: s.key as SetupStepId, title: s.title, line: s.line ?? "", ...(s.auto ? { auto: true } : {}),
+    })));
+  if (settings?.stall_days) setStallDays(settings.stall_days);
+}
+
 export async function loadDb(): Promise<Db> {
+  await applyRules();
   const nowIso = new Date().toISOString();
   const [
     members, tiers, seriesMembers, onboarding, setup, interest, hours, meetings, attendance,
@@ -279,6 +315,8 @@ export const api = {
     step === "first-hour" ? Promise.resolve() : rpc("complete_setup", { p_step: step, p_done: done }),
   proposeGraduation: (memberId: string) => rpc("propose_graduation", { p_member: memberUuid(memberId) }),
   resolveGraduation: (memberId: string, approve: boolean) => rpc("resolve_graduation", { p_member: memberUuid(memberId), p_approve: approve }),
+  /** Back to day one of onboarding (testing and demos); the database refuses admin accounts. */
+  restartOnboarding: (memberId: string) => rpc("restart_onboarding", { p_member: memberUuid(memberId) }),
 
   requestPause: (from: string, to: string, reason: string) => rpc("request_pause", { p_starts: from, p_ends: to, p_reason: reason || null }),
   resolvePause: (id: string, approve: boolean) => rpc("review_pause", { p_pause: id, p_approve: approve }),

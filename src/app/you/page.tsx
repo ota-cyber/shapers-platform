@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
+import { backendEnabled } from "@/lib/backend";
 import { fmt, addDays } from "@/lib/dates";
 import { useHeadline } from "@/components/blocks";
 import { ProfileGrid, ProfileHead } from "@/components/profile";
@@ -99,13 +100,13 @@ function Settings() {
         </button>
         {resetting ? (
           <div>
-            <span className="k">Reset all demo data?</span>
-            <button className="btn-s on" onClick={() => { reset(); setResetting(false); }}>Reset</button>
+            <span className="k">{backendEnabled ? "Restart your onboarding from day one?" : "Reset all demo data?"}</span>
+            <button className="btn-s on" onClick={() => { reset(); setResetting(false); }}>{backendEnabled ? "Restart" : "Reset"}</button>
             <button className="btn-s" onClick={() => setResetting(false)}>Cancel</button>
           </div>
         ) : (
           <button onClick={() => setResetting(true)} style={{ width: "100%" }}>
-            <span className="k" style={{ textAlign: "left" }}>Reset demo data</span><span className="go">→</span>
+            <span className="k" style={{ textAlign: "left" }}>{backendEnabled ? "Restart my onboarding" : "Reset demo data"}</span><span className="go">→</span>
           </button>
         )}
       </div>
