@@ -5,10 +5,11 @@
 // the demo password so anyone can try the platform.
 
 const DEMO = [
-  { id: "petra.jerman", label: "Petra", line: "GO! member, close to Impact" },
-  { id: "lea.zorman", label: "Lea", line: "New, onboarding" },
-  { id: "rok.golob", label: "Rok", line: "Impact, buddy of two new members" },
-  { id: "ana.kovac", label: "Ana", line: "Admin" },
+  { id: "petra.jerman", label: "Sofia", line: "GO! member, close to Impact" },
+  { id: "lea.zorman", label: "Vid", line: "New, onboarding" },
+  { id: "mia.kranjc", label: "Nik", line: "New, ready to graduate" },
+  { id: "rok.golob", label: "Marko", line: "Impact, buddy of new members" },
+  { id: "ana.kovac", label: "Jure", line: "Admin" },
 ];
 
 export function SignIn(props: {

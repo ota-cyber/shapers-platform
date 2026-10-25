@@ -63,19 +63,22 @@ ALL_STEPS = ["values", "tiers", "contract", "email", "slack", "calendar", "buddy
 
 # New members, onboarding now. progress = date of their latest ticked step.
 NEW_MEMBERS = [
-    # stalled: her buddy Rok gets the nudge
-    {"handle": "lea.zorman", "name": "Lea Zorman", "series": ["Shapers Tech"], "joined": "2026-10-12",
-     "avatar": "sprout", "steps": ["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"],
+    # stalled: his buddy Marko gets the nudge
+    {"handle": "lea.zorman", "name": "Vid Kovač", "series": ["Shapers Tech"], "joined": "2026-10-12",
+     "avatar": "vid-kovac", "steps": ["values", "tiers", "contract", "email", "slack", "buddy", "first-hour"],
      "progress": "2026-10-14"},
     {"handle": "tim.vrhovnik", "name": "Tim Vrhovnik", "series": ["Grants"], "joined": "2026-10-19",
      "avatar": "key", "steps": ["values", "tiers"], "progress": "2026-10-21"},
-    # every step done: her buddy Rok can propose ending onboarding
-    {"handle": "mia.kranjc", "name": "Mia Kranjc", "series": ["Shape Talks"], "joined": "2026-09-28",
-     "avatar": "dove", "steps": ALL_STEPS, "progress": "2026-10-22"},
+    # every step done: his buddy Marko can propose ending onboarding
+    {"handle": "mia.kranjc", "name": "Nik Slobodjanac", "series": ["Shape Talks"], "joined": "2026-09-28",
+     "avatar": "nik-slobodjanac", "steps": ALL_STEPS, "progress": "2026-10-22"},
 ]
 
 # Display-name changes to the sandbox roster (emails stay, so calendar and attendance still match).
-NAME_OVERRIDES = {"ana.kovac": "Ana Petrič"}
+NAME_OVERRIDES = {"ana.kovac": "Jure Kovač", "rok.golob": "Marko Grad", "petra.jerman": "Sofia Manzou"}
+
+# Statue portraits for the demo people (public/img); everyone else gets an object.
+AVATAR_OVERRIDES = {"ana.kovac": "jure-kovac", "rok.golob": "marko-grad", "petra.jerman": "sofia-manzou"}
 
 # Members who joined before the platform and are still on their setup steps.
 SETUP = {"zala.turk": ["confirm-tier"], "nejc.kralj": []}
@@ -238,7 +241,7 @@ def main():
             "id": mid(handle), "handle": handle, "name": NAME_OVERRIDES.get(handle, r["name"]), "email": r["email"],
             "tier": TIERS[r["tier"]], "admin": r["admin"] == "yes",
             "series": [s.strip() for s in r["series"].split(";") if s.strip() != "Community"],
-            "joined": since, "since": since, "avatar": AVATARS[i % len(AVATARS)],
+            "joined": since, "since": since, "avatar": AVATAR_OVERRIDES.get(handle, AVATARS[i % len(AVATARS)]),
             "onboarding": False, "setup": handle in SETUP,
         })
     for n in NEW_MEMBERS:
