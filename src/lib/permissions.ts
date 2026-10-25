@@ -16,14 +16,15 @@ export interface TaskRights {
   edit: boolean;
   /** hand to someone else or unassign */
   reassign: boolean;
-  /** move to another project */
+  /** move to another project (any tier, own tasks; decided 2026-10-25) */
   move: boolean;
 }
 
 export function taskRights(me: Member, t: Task): TaskRights {
   if (canManageTasks(me)) return { edit: true, reassign: true, move: true };
+  // Everyone can move their own tasks anywhere on the board (status and project); only reassigning stays restricted.
   const mine = t.assigneeId === me.id;
-  return { edit: mine, reassign: false, move: false };
+  return { edit: mine, reassign: false, move: mine };
 }
 
 /** Everyone can create tasks; GO! and Impact members only for themselves (assignee is forced to them). */

@@ -25,14 +25,14 @@ Decided by Jure, 2026-10-24. **The backend must enforce these rules.** The UI hi
 | Change priority | yes | no |
 | Add or edit notes and details | yes | no |
 | Assign or hand it to someone else, or unassign it | **no** | no |
-| Move it to another project | **no** | no |
+| Move it around the board: status and project (drag between columns and project rows) | yes | no |
 | Pick up an unassigned task ("take it") | **no**: someone with full task access assigns it first | n/a |
 | Create a task **for themselves** (any project; it is assigned to them) | yes | n/a |
 | Create a task for someone else, or create a project | **no** | n/a |
 | Change a task's size (S / M / L) | **no** | no |
 | Delete a task | no | no |
 
-In short: a member works only on what has been assigned to them. Once a task is theirs, they can schedule it and fill it in however they like, but they cannot change who owns it, where it lives, or anything belonging to someone else.
+In short: a member works only on what has been assigned to them. Once a task is theirs, they can move it anywhere on the board, schedule it and fill it in however they like, but they cannot change who owns it or touch anything belonging to someone else.
 
 ### What Core members and admins may do
 
@@ -49,7 +49,8 @@ Admin role only, never granted by tier: the Team section (everyone's stats, movi
 ## Backend checklist
 
 - Every task write (`PATCH /tasks/:id`, move, dates) checks: `user.tier === "Core" || user.admin || task.assigneeId === user.id`.
-- Fields `assigneeId` and `projectId` are writable only by Core members and admins. Reject the whole request if anyone else sends them, even with an unchanged value.
+- Field `assigneeId` is writable only by Core members and admins. Reject the whole request if anyone else sends it, even with an unchanged value.
+- Field `projectId`: Core members and admins on any task; GO!/Impact members only on tasks assigned to them.
 - `POST /tasks`: anyone. If the creator is GO!/Impact and not admin, force `assigneeId` to the creator (reject any other value).
 - `POST /projects`: Core members and admins only.
 - Field `size` (S / M / L) is writable only by Core members and admins: it feeds the performance score, so members must not be able to inflate it.
@@ -71,3 +72,4 @@ When a new member picks projects during onboarding, the app only records their c
 
 - 2026-10-24: GO! and Impact members **can** create tasks for themselves (Jure).
 - 2026-10-24: tasks get a size, S / M / L = 1 / 3 / 8 points, set by Core or admin only (Jure). Used by the performance leaderboard: score = points of finished tasks + 5 per full weekly commitment met, hours judged against each member's own tier.
+- 2026-10-25: every tier can move their own tasks around the whole board, including into another project's row (Jure). Reassigning to another person stays Core/admin only.

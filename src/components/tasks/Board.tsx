@@ -74,7 +74,7 @@ export function Board({ tasks, lanes, mode, onOpen, defaultProject }: Props) {
     if (mode === "person" && rights.reassign) to.assigneeId = lane === "_none" ? null : lane;
     moveTask(t.id, to);
     if (otherLane && !(mode === "project" ? rights.move : rights.reassign))
-      say(`Moved to ${STATUS_LABEL[status]}. Only Core members and admins can move a task to another ${mode === "project" ? "project" : "person"}.`);
+      say(`Moved to ${STATUS_LABEL[status]}. Only Core members and admins can hand a task to another person.`);
   };
 
   return (
