@@ -74,6 +74,9 @@ NEW_MEMBERS = [
      "avatar": "dove", "steps": ALL_STEPS, "progress": "2026-10-22"},
 ]
 
+# Display-name changes to the sandbox roster (emails stay, so calendar and attendance still match).
+NAME_OVERRIDES = {"ana.kovac": "Ana Petrič"}
+
 # Members who joined before the platform and are still on their setup steps.
 SETUP = {"zala.turk": ["confirm-tier"], "nejc.kralj": []}
 
@@ -232,7 +235,7 @@ def main():
         handle = r["email"].split("@")[0]
         since = TIER_SINCE.get(handle, "2026-01-01")
         members.append({
-            "id": mid(handle), "handle": handle, "name": r["name"], "email": r["email"],
+            "id": mid(handle), "handle": handle, "name": NAME_OVERRIDES.get(handle, r["name"]), "email": r["email"],
             "tier": TIERS[r["tier"]], "admin": r["admin"] == "yes",
             "series": [s.strip() for s in r["series"].split(";") if s.strip() != "Community"],
             "joined": since, "since": since, "avatar": AVATARS[i % len(AVATARS)],
