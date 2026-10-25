@@ -16,7 +16,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(p.title || "Global Shapers", {
       body: p.body || "",
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/badge-96.png",
       tag: p.tag || p.kind,
       renotify: Boolean(p.tag),
       actions: p.actions || [],

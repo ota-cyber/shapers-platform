@@ -51,6 +51,6 @@ export async function updatePushCategories(categories: Record<NotifyCategory, bo
 export async function testNotification(title: string, body: string): Promise<boolean> {
   if (pushState() !== "granted") return false;
   const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
-  await reg.showNotification(title, { body, icon: "/icon-192.png", badge: "/icon-192.png", tag: "test" });
+  await reg.showNotification(title, { body, icon: "/icon-192.png", badge: "/badge-96.png", tag: "test" });
   return true;
 }

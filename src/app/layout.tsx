@@ -12,7 +12,10 @@ export const metadata: Metadata = {
   title: "Global Shapers",
   description: "Tasks, hours, meetings and your path through the tiers.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+  icons: {
+    icon: [{ url: "/favicon-32.png", sizes: "32x32" }, { url: "/icon-192.png", sizes: "192x192" }],
+    apple: "/apple-touch-icon.png",
+  },
   // Lets iPhones add the app to the Home Screen, the only way iOS allows web push.
   appleWebApp: { capable: true, title: "Shapers", statusBarStyle: "default" },
 };

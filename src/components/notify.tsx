@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useApp, DEFAULT_NOTIFY } from "@/lib/store";
 import { CATEGORY_LABEL, MAX_PER_DAY, NOTIFICATIONS, QUIET_HOURS, type NotifyCategory, type NotifyKind } from "@/lib/notifications";
 import { enablePush, pushState, testNotification, updatePushCategories, type PushState } from "@/lib/push";
+import { imgSrc } from "@/lib/assets";
 import { Sheet } from "./ui";
 
 const STATE_LINE: Record<PushState, string> = {
@@ -103,7 +104,7 @@ function NotifyPreview({ onClose, admin }: { onClose: () => void; admin: boolean
 export function NotifyCard({ n }: { n: NotifyKind }) {
   return (
     <div className="ntf">
-      <div className="ntf-icon" aria-hidden><img src="/icon-192.png" alt="" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} /></div>
+      <div className="ntf-icon" aria-hidden><img src={imgSrc("app-icon")} alt="" /></div>
       <div className="grow" style={{ minWidth: 0 }}>
         <div className="ntf-top"><b>{n.title}</b><span>{n.ago}</span></div>
         <div className="ntf-body">{n.body}</div>
