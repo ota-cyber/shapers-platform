@@ -9,6 +9,7 @@ One page: services, how they connect, environment variables, and how to deploy f
 | **Supabase** | Postgres (all data, rules and analytics as SQL), Auth (sign-in), one Edge Function (`sync-calendar`) | Free |
 | **Google Calendar** | Source of all meetings. Read only, through the public Calendar API with an API key | Free |
 | **Vercel** | Hosts the Next.js web app (`src/`) | Free |
+| **Slack** | Finished tasks are shared in the team channel (Incoming Webhook, posted by the database) | Free |
 
 ```
 Browser ──supabase-js (anon key + user session)──► Supabase API ──► Postgres (RLS on every table)
@@ -16,7 +17,7 @@ Browser ──supabase-js (anon key + user session)──► Supabase API ──
 Admin "Sync calendar" ──► Edge Function sync-calendar ─┴─► Google Calendar API (read only)
 ```
 
-Nothing writes to Google Calendar or Slack.
+Nothing writes to Google Calendar. Finished tasks are posted to Slack by the database (`task_done_to_slack`).
 
 ## Repository layout
 
@@ -74,6 +75,16 @@ Needs: Node 18+, the [Supabase CLI](https://supabase.com/docs/guides/cli), a Sup
    client ID and secret. In Supabase → Authentication → URL Configuration, set the Site URL to the Vercel URL and add it
    to the redirect URLs. A Google account signs in as the member with the same email; an admin adds new people in
    Team → Quick add. The demo people sign in with the demo password from the sign-in screen.
+
+## Slack
+
+Create a Slack app with an **Incoming Webhook** for the team channel, then store its URL in the database
+(Supabase → SQL editor; it lives in the `private` schema, which the API never serves):
+
+```sql
+insert into private.settings values ('slack_webhook_url', 'https://hooks.slack.com/services/…')
+on conflict (key) do update set value = excluded.value;
+```
 
 ## Changing things later
 

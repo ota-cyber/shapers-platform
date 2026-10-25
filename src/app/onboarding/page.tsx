@@ -202,7 +202,7 @@ function OnboardingFlow() {
       <div style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
         {[
           ["now", "Your week at a glance", `${standingOf(me.id).toKeep ? `${standingOf(me.id).toKeep} h to keep GO! this week.` : "Your week is made."}`],
-          ["Yesterday", "Still working?", "Tap yes for another hour, or we clock you out."],
+          ["Yesterday", "One hour, counted", "Tap Clock in and an hour is on your week. Still here after it? Tap again."],
           ["Mon", "Community in 2 days", "In person. Can't make it? Say so 72 h ahead."],
         ].map(([when, t, b], k) => (
           <div key={k} style={{ background: "#fff", borderRadius: 10, padding: "10px 12px", margin: k === 0 ? "0 -26px 10px" : "0 0 8px", display: "flex", gap: 10, textAlign: "left", boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>

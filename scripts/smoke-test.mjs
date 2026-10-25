@@ -84,10 +84,9 @@ const before = (await get(member, "member_overview?select=week_hours")).data[0].
 const s1 = await rpc(member, "clock_in");
 const s2 = await rpc(member, "clock_in");
 ok(s1.ok && s2.ok && s1.data.id === s2.data.id, "double clock-in returns the same session");
-const ext = await rpc(member, "extend_session");
-ok(ext.ok && new Date(ext.data.planned_end) - new Date(s1.data.planned_end) === 3600e3, "extend adds one hour");
-const out = await rpc(member, "clock_out");
-ok(out.ok && out.data.ended_at, "clock out ends the session");
+ok(new Date(s1.data.ended_at) - new Date(s1.data.started_at) === 3600e3, "clock in books one whole hour at once");
+const undo = await rpc(member, "undo_clock_in");
+ok(undo.ok, "a mistaken clock-in can be removed while its hour runs");
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Ljubljana" });
 const old = new Date(Date.now() - 4 * 864e5).toLocaleDateString("sv-SE", { timeZone: "Europe/Ljubljana" });
 const lh = await rpc(member, "log_hours", { p_date: today, p_hours: 1.5, p_note: "smoke test" });

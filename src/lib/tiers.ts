@@ -116,10 +116,10 @@ export function isPaused(db: Db, memberId: string, week: string): boolean {
   );
 }
 
+/** Clock-in books its full hour at the press (2026-10-25), so a running hour adds nothing extra. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function sessionHours(db: Db, memberId: string, now: Date): number {
-  const s = db.sessions.find((x) => x.memberId === memberId);
-  if (!s) return 0;
-  return Math.max(0, (now.getTime() - new Date(s.start).getTime()) / 3_600_000);
+  return 0;
 }
 
 export function standing(db: Db, member: Member, today: string, now: Date): Standing {

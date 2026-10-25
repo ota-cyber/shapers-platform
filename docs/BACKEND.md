@@ -70,11 +70,9 @@ Tasks with `kind = "consequence"` are the automatic follow-ups for GO! members w
 
 | Need | Call |
 |---|---|
-| Running timer? | `rpc("current_session")` → session or `null`. Show "Still working?" when `planned_end` is close |
-| Clock in | `rpc("clock_in", { p_task_id? })`. Safe to double-tap |
-| Still working → yes | `rpc("extend_session")` (+1 hour; allowed until 15 min after `planned_end`) |
-| Clock out | `rpc("clock_out")` |
-| No answer | nothing to do: the session ends at `planned_end` by itself |
+| Running hour? | `rpc("current_session")` → the current hour block or `null` |
+| Clock in | `rpc("clock_in", { p_task_id? })`: books one whole hour at once; pressing again inside that hour adds nothing |
+| Remove a mistaken hour | `rpc("undo_clock_in")` while the hour runs |
 | Log hours manually | `rpc("log_hours", { p_date: "2026-10-24", p_hours: 1.5, p_note?, p_task_id? })`. Today and yesterday → approved; older → `status: "pending"` until an admin approves |
 | My weeks (chart) | `from("week_hours").select("*").eq("member_id", me).order("week_start")` → `hours, target, met, paused, is_current` |
 | My entries | `from("work_sessions").select("*").eq("member_id", me).order("started_at", { ascending: false })` |

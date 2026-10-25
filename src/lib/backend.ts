@@ -64,6 +64,18 @@ export async function signInWithGoogle(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Live: calls back whenever anyone moves a task to Done (task history rows, RLS applies). */
+export function onTaskDone(cb: (e: { taskId: string; actorId: string | null }) => void): () => void {
+  const channel = sb!
+    .channel("task-done")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "task_events", filter: "kind=eq.status" }, (payload) => {
+      const row = payload.new as { task_id: string; actor_id: string | null; to_value: string | null };
+      if (row.to_value === "done") cb({ taskId: row.task_id, actorId: memberHandle(row.actor_id) });
+    })
+    .subscribe();
+  return () => void sb!.removeChannel(channel);
+}
+
 export async function signOut(): Promise<void> {
   await sb!.auth.signOut();
 }
@@ -139,7 +151,7 @@ export async function loadDb(): Promise<Db> {
     sb!.from("projects").select("id,name,series_id,lead_id,description").is("archived_at", null).order("created_at"),
     sb!.from("tasks").select("*").order("sort_order"),
     sb!.from("task_events").select("task_id,actor_id,kind,from_value,to_value,at").order("at").limit(5000),
-    sb!.from("work_sessions").select("member_id,started_at,planned_end,task_id").eq("source", "timer").is("ended_at", null).gt("planned_end", nowIso),
+    sb!.from("work_sessions").select("member_id,started_at,planned_end,task_id").eq("source", "timer").gt("planned_end", nowIso),
     sb!.from("work_sessions").select("id,member_id,started_at,ended_at,note,status,reviewed_at").eq("source", "manual"),
     sb!.from("pauses").select("id,member_id,starts_on,ends_on,reason,status").neq("status", "rejected"),
     sb!.from("absence_notices").select("member_id,meeting_id,created_at,in_time"),
@@ -284,6 +296,7 @@ export const api = {
   clockIn: (taskId: string | null) => rpc("clock_in", { p_task_id: taskId }),
   stillWorking: () => rpc("extend_session"),
   clockOut: () => rpc("clock_out"),
+  removeHour: () => rpc("undo_clock_in"),
   logHours: (date: string, hours: number, note: string) => rpc("log_hours", { p_date: date, p_hours: hours, p_note: note || null }),
   resolveBackfill: (id: string, approve: boolean) => rpc("review_session", { p_session: id, p_approve: approve }),
 

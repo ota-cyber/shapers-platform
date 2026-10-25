@@ -11,7 +11,7 @@ import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
 import { standing, tierRule, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
 import { flowDone } from "./onboarding";
-import { api, backendEnabled, loadDb, myHandle, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
+import { api, backendEnabled, loadDb, myHandle, onTaskDone, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
 const KEY = "shapers-ui-v5";
@@ -21,7 +21,6 @@ const INTRO_KEY = "shapers-intro-played";
 export const ALWAYS_ONBOARD = ["lea.zorman"];
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
 const BLOCK_MS = 3_600_000;
-const PROMPT_BEFORE_MS = 5 * 60_000;
 
 interface Prefs {
   meId: string;
@@ -55,6 +54,8 @@ interface Ctx {
   introPlayed: () => void;
   clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
+  /** Pressed Clock in by mistake: removes the running hour. */
+  removeHour: () => void;
   clockOut: () => void;
   logHours: (date: string, hours: number, note?: string) => "logged" | "requested";
   resolveBackfill: (id: string, approve: boolean) => void;
@@ -139,6 +140,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{ db: Db; prefs: Prefs } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
+  // Pop-ups for finished tasks (backend mode, live for everyone signed in).
+  const [notices, setNotices] = useState<{ id: number; text: string }[]>([]);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   // Backend mode only: who is signed in. "signed-out" and "not-member" show the sign-in screen.
   const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
   const [busy, setBusy] = useState(false);
@@ -239,6 +244,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [reload, start]);
 
+  // Someone moved a task to Done: show who and what, for a few seconds.
+  const signedIn = auth.status === "ready";
+  useEffect(() => {
+    if (!backendEnabled || !signedIn) return;
+    return onTaskDone(async ({ taskId, actorId }) => {
+      let task = stateRef.current?.db.tasks.find((t) => t.id === taskId);
+      if (!task) {
+        await reload();
+        task = stateRef.current?.db.tasks.find((t) => t.id === taskId);
+      }
+      const who = stateRef.current?.db.members.find((m) => m.id === actorId)?.name ?? "Someone";
+      const id = Date.now() + Math.random();
+      setNotices((n) => [...n, { id, text: `${who} finished “${task?.title ?? "a task"}” · shared in Slack` }]);
+      setTimeout(() => setNotices((n) => n.filter((x) => x.id !== id)), 6000);
+      void reload();
+    });
+  }, [signedIn, reload]);
+
   useEffect(() => {
     if (!state) return;
     try {
@@ -257,7 +280,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // A block that ran out without "still working?" closes at the end of the block.
+  // An hour block that has run out simply ends; its hour was booked at clock-in.
   const closing = useRef(false);
   useEffect(() => {
     if (!state || closing.current) return;
@@ -265,7 +288,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!expired.length) return;
     closing.current = true;
     mutate((db) => {
-      for (const s of expired) finishSession(db, s.memberId, new Date(s.blockEnd));
+      db.sessions = db.sessions.filter((s) => new Date(s.blockEnd) > now);
     });
     closing.current = false;
   }, [now, state, mutate]);
@@ -277,8 +300,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const member = (id: string | null) => db.members.find((m) => m.id === id);
     const me = member(prefs.meId) ?? db.members[0];
     const standingOf = (id: string) => standing(db, member(id)!, today, now);
-    const session = db.sessions.find((s) => s.memberId === me.id);
-    const stillWorkingDue = !!session && new Date(session.blockEnd).getTime() - now.getTime() <= PROMPT_BEFORE_MS;
+    // No "still working?": every clock-in is a whole hour (2026-10-25).
+    const stillWorkingDue = false;
 
     const upcoming = db.meetings.filter((m) => new Date(m.end) > now).sort((a, b) => a.start.localeCompare(b.start));
     // A meeting is live only while it is going on: from its start to its end.
@@ -321,17 +344,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       stalledDays,
       setPrefs: (p) => setState((s) => (s ? { ...s, prefs: { ...s.prefs, ...p } } : s)),
       reset: () => setState({ db: seedDb(), prefs }),
+      // Clock in = one hour, booked now. Pressing again inside that hour adds nothing.
       clockIn: (taskId) =>
         mutate((db) => {
-          if (db.sessions.some((s) => s.memberId === me.id)) return;
+          if (db.sessions.some((s) => s.memberId === me.id && new Date(s.blockEnd) > now)) return;
           db.sessions.push({ memberId: me.id, start: now.toISOString(), blockEnd: new Date(now.getTime() + BLOCK_MS).toISOString(), taskId });
+          addHours(db, me.id, today, 1);
+          const t = taskId ? db.tasks.find((x) => x.id === taskId) : undefined;
+          if (t) t.history.push({ at: now.toISOString(), by: me.id, what: "1 h clocked" });
         }),
-      stillWorking: () =>
+      stillWorking: () => {},
+      clockOut: () => {},
+      removeHour: () =>
         mutate((db) => {
-          const s = db.sessions.find((x) => x.memberId === me.id);
-          if (s) s.blockEnd = new Date(new Date(s.blockEnd).getTime() + BLOCK_MS).toISOString();
+          const s = db.sessions.find((x) => x.memberId === me.id && new Date(x.blockEnd) > now);
+          if (!s) return;
+          db.sessions = db.sessions.filter((x) => x !== s);
+          addHours(db, me.id, isoDate(new Date(s.start)), -1);
         }),
-      clockOut: () => mutate((db) => finishSession(db, me.id, now)),
       logHours: (date, hours, note = "") => {
         const yesterday = addDays(today, -1);
         if (date >= yesterday) {
@@ -529,8 +559,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // The demo reset restarts my onboarding from day one (the database refuses admins).
       reset: () => remote(() => api.restartOnboarding(me.id)),
       clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
-      stillWorking: () => { base.stillWorking(); remote(api.stillWorking); },
-      clockOut: () => { base.clockOut(); remote(api.clockOut); },
+      stillWorking: () => {},
+      clockOut: () => {},
+      removeHour: () => { base.removeHour(); remote(api.removeHour); },
       logHours: (date, hours, note = "") => {
         const r = base.logHours(date, hours, note);
         remote(() => api.logHours(date, hours, note));
@@ -600,6 +631,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppCtx.Provider value={value}>
       {children}
+      {notices.length > 0 && (
+        <div className="info-toasts" role="status">
+          {notices.map((n) => (
+            <div key={n.id} className="info-toast" onClick={() => setNotices((all) => all.filter((x) => x.id !== n.id))}>
+              {n.text}
+            </div>
+          ))}
+        </div>
+      )}
       {error && (
         <div role="alert" className="backend-error" onClick={() => setError(null)}>
           {error}
@@ -616,15 +656,6 @@ function addHours(db: Db, memberId: string, date: string, hours: number) {
   else db.hours.push({ memberId, weekStart: ws, hours });
 }
 
-function finishSession(db: Db, memberId: string, end: Date) {
-  const s = db.sessions.find((x) => x.memberId === memberId);
-  if (!s) return;
-  const h = Math.round((Math.max(0, (end.getTime() - new Date(s.start).getTime()) / 3_600_000)) * 4) / 4;
-  addHours(db, memberId, isoDate(new Date(s.start)), h);
-  const t = s.taskId ? db.tasks.find((x) => x.id === s.taskId) : undefined;
-  if (t && h > 0) t.history.push({ at: end.toISOString(), by: memberId, what: `${h} h clocked` });
-  db.sessions = db.sessions.filter((x) => x.memberId !== memberId);
-}
 
 function setAttendance(db: Db, meetingId: string, memberId: string, state: AttendanceState) {
   const m = db.meetings.find((x) => x.id === meetingId)!;

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
-import { elapsed, fmt, greeting, hoursLabel } from "@/lib/dates";
+import { fmt, greeting, hoursLabel } from "@/lib/dates";
 import { AdminToday, BuddyCard, BuddyNudges, LogHoursLink, SetupCard, TopPerformers, useOnboarding } from "@/components/blocks";
 import { OrgCards } from "@/components/home";
 import { ClockInSheet, WeekPlanner } from "@/components/week";
@@ -12,7 +12,7 @@ import { handle } from "@/components/ui";
 import { flowDone } from "@/lib/onboarding";
 
 export default function Home() {
-  const { me, my, now, db, clockOut, setupDone, stalledDays, onboardingDone } = useApp();
+  const { me, my, now, db, setupDone, stalledDays, onboardingDone, removeHour } = useApp();
   const setup = setupDone(me);
   const settingUp = !!setup && !Object.values(setup).every(Boolean);
   const nudges = db.members.some((m) => m.buddyId === me.id && m.onboarding !== null && (stalledDays(m) !== null || (!m.graduation && Object.values(onboardingDone(m)).every(Boolean))));
@@ -37,8 +37,13 @@ export default function Home() {
             {onboarding && <Link href="/onboarding" className="btn big" style={{ marginBottom: flowDone(onboardingDone(me)) ? 12 : 0 }}>Continue onboarding</Link>}
             {onboarding && !flowDone(onboardingDone(me)) ? null : session ? (
               <>
-                <button className="btn big outline" onClick={clockOut}>Clock out · {elapsed(session.start, now)}</button>
-                <p className="mono-lc muted" style={{ marginTop: 10 }}>On the clock for {sessionTask ? sessionTask.title : "general office work"}</p>
+                <button className="btn big outline" disabled>Clocked in · 1 h counted</button>
+                <p className="mono-lc muted" style={{ marginTop: 10 }}>
+                  {sessionTask ? sessionTask.title : "General office work"} until {new Date(session.blockEnd).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Ljubljana" })}. Still here after that? Clock in again.
+                </p>
+                <button className="mono-lc muted" onClick={removeHour} style={{ marginTop: 6, background: "none", border: 0, padding: 0, textDecoration: "underline", cursor: "pointer" }}>
+                  Pressed by mistake? Remove this hour
+                </button>
               </>
             ) : (
               <>

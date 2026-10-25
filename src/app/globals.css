@@ -669,3 +669,17 @@ button.wk-bar { border: 0; text-align: left; cursor: pointer; font: inherit; fon
 
 /* Log out (You -> Settings, bottom). */
 .rows .logout .k { color: #c62828; }
+
+/* Live "task finished" pop-ups (store.tsx). Tap to dismiss. */
+.info-toasts { position: fixed; top: 16px; right: 16px; z-index: 1001; display: grid; gap: 8px; max-width: min(92vw, 380px); }
+.info-toast {
+  padding: 12px 14px;
+  background: var(--paper, #fff);
+  color: var(--ink, #111);
+  border: 1px solid var(--line, #ddd);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.info-toast::before { content: "✓  "; }
