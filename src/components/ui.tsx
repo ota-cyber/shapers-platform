@@ -5,6 +5,7 @@ import { imgSrc } from "@/lib/assets";
 import type { Member } from "@/lib/types";
 import type { Standing } from "@/lib/tiers";
 import { hoursLabel } from "@/lib/dates";
+import { isDemoEmail } from "@/lib/backend";
 
 export function Img({ name, alt = "", className, loading = "lazy" }: { name: string; alt?: string; className?: string; loading?: "lazy" | "eager" }) {
   // eslint-disable-next-line @next/next/no-img-element
@@ -19,7 +20,10 @@ export function Avatar({ m, size }: { m: Member; size?: "s" | "m" }) {
   );
 }
 
-export const handle = (m: Member) => "@" + m.id.split(".")[0];
+// Demo accounts keep their sandbox logins but were renamed (Marko, Nik, Vid, Jure, Sofia),
+// so their handle follows the name; everyone else's comes from their email.
+export const handle = (m: Member) =>
+  "@" + (isDemoEmail(m.email) ? m.name.split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : m.id.split(".")[0]);
 export const first = (m: Member) => m.name.split(" ")[0];
 
 /** Co–Star's "⊙ Sun ☽ Moon ↑ Rising" line, as tier · this week · streak. */
