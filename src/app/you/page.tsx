@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
+import { backendEnabled } from "@/lib/backend";
 import { fmt, addDays } from "@/lib/dates";
 import { useHeadline } from "@/components/blocks";
 import { ProfileGrid, ProfileHead } from "@/components/profile";
@@ -76,15 +77,6 @@ function Settings() {
         <Link href="/you"><span className="k">Tier rules</span><span className="go">→</span></Link>
         <Link href="/onboarding"><span className="k">Onboarding</span><span className="go">→</span></Link>
       </div>
-      {authEmail && (
-        <>
-          <div className="group-h">Account</div>
-          <div className="rows">
-            <div><span className="k">Signed in as</span><span className="v">{authEmail}</span></div>
-            <button onClick={signOut} style={{ width: "100%" }}><span className="k" style={{ textAlign: "left" }}>Sign out</span><span className="go">→</span></button>
-          </div>
-        </>
-      )}
       <div className="group-h">Demo</div>
       <div className="rows">
         <label style={{ width: "100%" }}>
@@ -101,16 +93,27 @@ function Settings() {
         </button>
         {resetting ? (
           <div>
-            <span className="k">Reset all demo data?</span>
-            <button className="btn-s on" onClick={() => { reset(); setResetting(false); }}>Reset</button>
+            <span className="k">{backendEnabled ? "Restart your onboarding from day one?" : "Reset all demo data?"}</span>
+            <button className="btn-s on" onClick={() => { reset(); setResetting(false); }}>{backendEnabled ? "Restart" : "Reset"}</button>
             <button className="btn-s" onClick={() => setResetting(false)}>Cancel</button>
           </div>
         ) : (
           <button onClick={() => setResetting(true)} style={{ width: "100%" }}>
-            <span className="k" style={{ textAlign: "left" }}>Reset demo data</span><span className="go">→</span>
+            <span className="k" style={{ textAlign: "left" }}>{backendEnabled ? "Restart my onboarding" : "Reset demo data"}</span><span className="go">→</span>
           </button>
         )}
       </div>
+      {backendEnabled && (
+        <>
+          <div className="group-h">Account</div>
+          <div className="rows">
+            {authEmail && <div><span className="k">Signed in as</span><span className="v">{authEmail}</span></div>}
+            <button className="logout" onClick={signOut} style={{ width: "100%" }}>
+              <span className="k" style={{ textAlign: "left" }}>Log out</span>
+            </button>
+          </div>
+        </>
+      )}
       <div style={{ height: 40 }} />
       {pause && <PauseSheet onClose={() => setPause(false)} onSave={(f, t, r) => { requestPause(f, t, r); setPause(false); }} today={today} tier={me.tier} />}
     </>

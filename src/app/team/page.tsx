@@ -326,13 +326,60 @@ function AddProject({ onClose }: { onClose: () => void }) {
 }
 
 function Approvals() {
-  const { db, member, resolveBackfill, resolvePause, resolveGraduation } = useApp();
+  const { db, member, resolveBackfill, resolvePause, resolveGraduation, approveJoin, declineJoin, setBuddy } = useApp();
+  const joins = db.joinRequests ?? [];
+  const buddyless = db.members.filter((m) => m.onboarding !== null && !m.buddyId && !m.admin);
+  const buddies = db.members.filter((m) => m.tier !== "GO!").sort((a, b) => a.name.localeCompare(b.name));
+  const [buddyFor, setBuddyFor] = useState<Record<string, string>>({});
   const back = db.backfills.filter((b) => b.status === "pending");
   const pauses = db.pauses.filter((p) => p.status === "requested");
   const grads = db.members.filter((m) => m.graduation);
   return (
     <>
       <div className="sect"><div className="h-l">Waiting for you</div><p className="small muted" style={{ marginTop: 6 }}>Hours older than a day, pause requests, and buddies graduating new members. Everything else is trusted by default.</p></div>
+      {buddyless.length > 0 && (
+        <>
+          <div className="group-h">Needs a buddy</div>
+          <div className="rows">
+            {buddyless.map((m) => (
+              <div key={m.id} style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                <div className="grow">
+                  <div className="k">{m.name}</div>
+                  <div className="small muted">New member, blocked until they have a buddy.</div>
+                </div>
+                <select value={buddyFor[m.id] ?? ""} onChange={(e) => setBuddyFor({ ...buddyFor, [m.id]: e.target.value })}
+                  style={{ border: 0, background: "transparent", fontFamily: "var(--mono)", fontSize: 13 }}>
+                  <option value="">Choose a buddy</option>
+                  {buddies.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <button className="btn-s on" disabled={!buddyFor[m.id]} onClick={() => setBuddy(m.id, buddyFor[m.id])}>Assign</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {joins.length > 0 && (
+        <>
+          <div className="group-h">Asking to join</div>
+          <div className="rows">
+            {joins.map((r) => (
+              <div key={r.id} style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                <div className="grow">
+                  <div className="k">{r.name}</div>
+                  <div className="small muted">{r.email} · signed in {fmt.short(r.at.slice(0, 10))}. Joins as GO! and starts onboarding.</div>
+                </div>
+                <select value={buddyFor[r.id] ?? ""} onChange={(e) => setBuddyFor({ ...buddyFor, [r.id]: e.target.value })}
+                  style={{ border: 0, background: "transparent", fontFamily: "var(--mono)", fontSize: 13 }}>
+                  <option value="">No buddy yet</option>
+                  {buddies.map((m) => <option key={m.id} value={m.id}>Buddy: {m.name}</option>)}
+                </select>
+                <button className="btn-s on" onClick={() => approveJoin(r.id, buddyFor[r.id] || null)}>Approve</button>
+                <button className="btn-s" onClick={() => declineJoin(r.id)}>Decline</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <div className="group-h">Hours back-filled</div>
       <div className="rows">
         {back.map((b) => (
@@ -367,7 +414,7 @@ function Approvals() {
           <div key={m.id}>
             <div className="grow">
               <div className="k">{m.name}</div>
-              <div className="small muted">Proposed by {member(m.graduation!.proposedBy)?.name ?? "their buddy"} on {fmt.short(m.graduation!.at)}</div>
+              <div className="small muted">{m.graduation!.proposedBy ? `Proposed by ${member(m.graduation!.proposedBy)?.name ?? "their buddy"}` : "Finished every onboarding step"} on {fmt.short(m.graduation!.at)}</div>
             </div>
             <button className="btn-s on" onClick={() => resolveGraduation(m.id, true)}>Confirm</button>
             <button className="btn-s" onClick={() => resolveGraduation(m.id, false)}>Not yet</button>

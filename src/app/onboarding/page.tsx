@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { ONBOARDING_STEPS } from "@/lib/seed";
@@ -15,17 +16,123 @@ import { fmt } from "@/lib/dates";
 import { TurnOnButton } from "@/components/notify";
 
 export default function Onboarding() {
+  const { me, introRun } = useApp();
+  // Full screen, above the app's navigation. A new intro run (sign-in) starts the flow
+  // over, even when this page is already open.
+  return (
+    <div className="ob-stage">
+      <OnboardingFlow key={`${me.id}:${introRun}`} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- motion (GSAP)
+// Each screen rises out of a soft blur, block by block; titles arrive word by word,
+// the welcome title letter by letter. Next plays the screen out before the next one comes in.
+
+const reduceMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const stage = () => document.querySelector<HTMLElement>(".ob-stage");
+const BLOCKS = "h1, h2, p, img, .mono-lc, .btn, .choices > *, .rows > *, .card, .cards > *, .hero-img";
+
+/** The outermost animatable blocks of the current screen (never a block inside another). */
+function blocks(root: HTMLElement): HTMLElement[] {
+  const all = Array.from(root.querySelectorAll<HTMLElement>(BLOCKS)).filter((el) => !el.closest(".mhead"));
+  const set = new Set(all);
+  return all.filter((el) => {
+    for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return false;
+    return true;
+  });
+}
+
+/** A title React renders as words (and, for the welcome, letters), so GSAP never rewrites the DOM. */
+function Split({ text, letters }: { text: string; letters?: boolean }) {
+  return (
+    <>
+      {text.split(" ").map((w, k) => (
+        <Fragment key={k}>
+          <span className="ob-w">{letters ? Array.from(w).map((c, j) => <span key={j} className="ob-c">{c}</span>) : w}</span>{" "}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function playIn(root: HTMLElement, welcome: boolean) {
+  const title = root.querySelector<HTMLElement>("h1");
+  const rest = blocks(root).filter((el) => el !== title);
+  const head = root.querySelector(".mhead");
+  // Clear anything the previous screen's exit left on reused elements.
+  gsap.set([title, ...rest].filter(Boolean), { clearProps: "opacity,visibility,transform,filter" });
+  const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+  if (head) tl.fromTo(head, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 0);
+  if (title) {
+    const parts = title.querySelectorAll(welcome ? ".ob-c" : ".ob-w");
+    tl.fromTo(
+      parts.length ? parts : [title],
+      { autoAlpha: 0, y: welcome ? 48 : 22, rotateX: welcome ? -70 : 0, filter: "blur(12px)", transformOrigin: "50% 100%" },
+      { autoAlpha: 1, y: 0, rotateX: 0, filter: "blur(0px)", duration: welcome ? 1.3 : 0.9, stagger: welcome ? 0.03 : 0.06, ease: "expo.out" },
+      0.1,
+    );
+  }
+  tl.fromTo(
+    rest,
+    { autoAlpha: 0, y: 28, filter: "blur(10px)" },
+    { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: 1, stagger: 0.09 },
+    welcome ? 0.7 : 0.35,
+  );
+}
+
+function playOut(done: () => void) {
+  const root = stage();
+  if (!root || reduceMotion()) return done();
+  gsap.to(blocks(root), {
+    autoAlpha: 0, y: -18, filter: "blur(8px)", duration: 0.35, stagger: 0.02, ease: "power2.in",
+    onComplete: done,
+  });
+}
+
+function OnboardingFlow() {
   const router = useRouter();
-  const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn } = useApp();
+  const { me, db, member, standingOf, onboardingDone, completeStep, joinProject, clockIn, finishOnboardingFlow, playIntro, introPlayed } = useApp();
   const done = onboardingDone(me);
   // Existing members (onboarding null) get a read-only refresher: nothing is marked.
   const refresher = me.onboarding === null;
-  const [i, setI] = useState(() => (refresher ? 0 : firstOpenScreen(done)));
+  // Right after a GO! sign-in the flow always plays from the first screen.
+  const [i, setI] = useState(() => (refresher || playIntro ? 0 : firstOpenScreen(done)));
   const [picked, setPicked] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
-  const [replay, setReplay] = useState(false);
+  const [replay, setReplay] = useState(playIntro);
+  useEffect(() => {
+    if (playIntro) introPlayed();
+  }, [playIntro, introPlayed]);
+  // The last screen is done: give the new profile its starter history (backend mode, once).
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!finished || refresher || seeded.current) return;
+    seeded.current = true;
+    finishOnboardingFlow();
+  }, [finished, refresher, finishOnboardingFlow]);
   const screen: Screen = SCREENS[i];
-  const next = () => (i < SCREENS.length - 1 ? setI(i + 1) : setFinished(true));
+  const leaving = useRef(false);
+  const next = () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    playOut(() => {
+      leaving.current = false;
+      if (i < SCREENS.length - 1) setI(i + 1);
+      else setFinished(true);
+    });
+  };
+  // Every new screen (and the closing one) animates in from the top of the stage.
+  const step = finished ? "finished" : `${screen}${replay ? "" : "-"}`;
+  useLayoutEffect(() => {
+    const root = stage();
+    if (!root) return;
+    root.scrollTop = 0;
+    if (reduceMotion()) return;
+    const ctx = gsap.context(() => playIn(root, step.startsWith("welcome")), root);
+    return () => ctx.revert();
+  }, [step]);
   const mark = (...ids: OnboardingStepId[]) => !refresher && ids.forEach((id) => completeStep(me.id, id));
   const buddy = member(me.buddyId);
 
@@ -42,7 +149,7 @@ export default function Onboarding() {
       {top}
       <div className="glance" style={{ paddingTop: 40 }}>
         <div className="mono-lc">{label}</div>
-        <h1 className="h-l" style={{ marginTop: 10, maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}>{title}</h1>
+        <h1 className="h-l" style={{ marginTop: 10, maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}><Split text={title} letters={label === "Welcome"} /></h1>
         {img && <Img name={img} className="hero-img" alt="" />}
         <div style={{ textAlign: "left" }}>{children}</div>
         <button className="btn" style={{ marginTop: 30, minWidth: 210 }} onClick={onCta}>{cta}</button>
@@ -186,7 +293,7 @@ export default function Onboarding() {
       <div style={{ position: "relative", margin: "28px auto 0", maxWidth: 300, height: 250, background: "linear-gradient(#141414, #141414 70%, rgba(20,20,20,0))", borderRadius: "28px 28px 0 0", padding: "40px 12px 0" }}>
         {[
           ["now", "Your week at a glance", `${standingOf(me.id).toKeep ? `${standingOf(me.id).toKeep} h to keep GO! this week.` : "Your week is made."}`],
-          ["Yesterday", "Still working?", "Tap yes for another hour, or we clock you out."],
+          ["Yesterday", "One hour, counted", "Tap Clock in and an hour is on your week. Still here after it? Tap again."],
           ["Mon", "Community in 2 days", "In person. Can't make it? Say so 72 h ahead."],
         ].map(([when, t, b], k) => (
           <div key={k} style={{ background: "#fff", borderRadius: 10, padding: "10px 12px", margin: k === 0 ? "0 -26px 10px" : "0 0 8px", display: "flex", gap: 10, textAlign: "left", boxShadow: "0 2px 8px rgba(0,0,0,.15)" }}>

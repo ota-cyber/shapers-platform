@@ -161,8 +161,11 @@ export function seedDb(): Db {
   };
 }
 
-/** No onboarding progress for this many days nudges the buddy. */
-export const STALL_DAYS = 7;
+/** No onboarding progress for this many days nudges the buddy. Backend mode loads it from app_settings. */
+export let STALL_DAYS = 7;
+export function setStallDays(days: number) {
+  STALL_DAYS = days;
+}
 
 export const SETUP_STEPS: { id: SetupStepId; title: string; line: string; auto?: boolean }[] = [
   { id: "confirm-tier", title: "Check your tier and hours", line: "What we have on file for you." },

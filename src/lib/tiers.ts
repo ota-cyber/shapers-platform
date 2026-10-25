@@ -72,8 +72,13 @@ export const TIERS: TierRule[] = [
 
 export const tierRule = (id: TierId) => TIERS.find((t) => t.id === id)!;
 
-export const COMMUNITY_NOTICE_H = 72;
-export const PROJECT_NOTICE_H = 24;
+// Backend mode loads these from the tiers table (applyRules in backend.ts).
+export let COMMUNITY_NOTICE_H = 72;
+export let PROJECT_NOTICE_H = 24;
+export function setNoticeHours(community: number, project: number) {
+  COMMUNITY_NOTICE_H = community;
+  PROJECT_NOTICE_H = project;
+}
 
 export interface WeekRow {
   weekStart: string;
@@ -111,10 +116,10 @@ export function isPaused(db: Db, memberId: string, week: string): boolean {
   );
 }
 
+/** Clock-in books its full hour at the press (2026-10-25), so a running hour adds nothing extra. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function sessionHours(db: Db, memberId: string, now: Date): number {
-  const s = db.sessions.find((x) => x.memberId === memberId);
-  if (!s) return 0;
-  return Math.max(0, (now.getTime() - new Date(s.start).getTime()) / 3_600_000);
+  return 0;
 }
 
 export function standing(db: Db, member: Member, today: string, now: Date): Standing {

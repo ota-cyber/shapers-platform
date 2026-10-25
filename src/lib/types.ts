@@ -158,4 +158,14 @@ export interface Db {
   pauses: Pause[];
   backfills: BackfillRequest[];
   absences: AbsenceNotice[];
+  /** People who signed in with Google but aren't on the roster yet (admins only). */
+  joinRequests?: JoinRequest[];
+}
+
+/** An admin approves it and the person becomes a GO! member who starts onboarding. */
+export interface JoinRequest {
+  id: string;
+  name: string;
+  email: string;
+  at: string;
 }

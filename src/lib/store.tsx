@@ -5,20 +5,27 @@
 // demo survives a reload.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AttendanceState, TaskSize, Db, Member, OnboardingStepId, Priority, Project, SetupStepId, Task, TaskStatus } from "./types";
 import type { NotifyCategory } from "./notifications";
 import { seedDb, ONBOARDING_STEPS, SETUP_STEPS, STALL_DAYS } from "./seed";
 import { addDays, isoDate, weekStart } from "./dates";
-import { standing, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
-import { api, backendEnabled, loadDb, myHandle, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
+import { standing, tierRule, type Standing, COMMUNITY_NOTICE_H, PROJECT_NOTICE_H } from "./tiers";
+import { flowDone } from "./onboarding";
+import { api, backendEnabled, loadDb, myHandle, onActivity, onTaskDone, sessionEmail, signInAs, signInWithGoogle, signOut, syncCalendar } from "./backend";
 import { SignIn } from "@/components/SignIn";
 
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
+const INTRO_KEY = "shapers-intro-played";
+const LAST_HOUR_KEY = "shapers-last-hour";
+/** How long after an hour ends we ask "still at the hub?". */
+const ASK_FOR_MS = 60 * 60_000;
+/** Demo rule (Jure, 2026-10-25): these members get the onboarding on every sign-in and every load, no matter what. */
+export const ALWAYS_ONBOARD = ["lea.zorman"];
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
 export const DEFAULT_NOTIFY: Record<NotifyCategory, boolean> = { hours: true, meetings: true, tasks: true, onboarding: true, admin: true };
 const BLOCK_MS = 3_600_000;
-const PROMPT_BEFORE_MS = 5 * 60_000;
 
 interface Prefs {
   meId: string;
@@ -43,8 +50,21 @@ interface Ctx {
   /** Signed-in email in backend mode (Google or demo); null in local demo mode. */
   authEmail: string | null;
   signOut: () => void;
+  approveJoin: (id: string, buddyId: string | null) => void;
+  /** Admin: give a member a buddy (members onboarding without one are blocked). */
+  setBuddy: (memberId: string, buddyId: string) => void;
+  declineJoin: (id: string) => void;
+  /** The onboarding screens are done (backend mode: adds the starter history). */
+  finishOnboardingFlow: () => void;
+  /** A new member who hasn't finished onboarding just signed in: the onboarding plays from its first screen. */
+  playIntro: boolean;
+  /** Changes every time the intro starts, so the onboarding page starts over even if it is already open. */
+  introRun: number;
+  introPlayed: () => void;
   clockIn: (taskId: string | null) => void;
   stillWorking: () => void;
+  /** Pressed Clock in by mistake: removes the running hour. */
+  removeHour: () => void;
   clockOut: () => void;
   logHours: (date: string, hours: number, note?: string) => "logged" | "requested";
   resolveBackfill: (id: string, approve: boolean) => void;
@@ -83,7 +103,6 @@ export interface RosterRow {
   tierSince?: string;
 }
 
-const WEEKLY: Record<Member["tier"], number> = { "GO!": 4, Impact: 10, Core: 70 };
 
 const AppCtx = createContext<Ctx | null>(null);
 
@@ -113,13 +132,66 @@ function load(): { db: Db; prefs: Prefs } {
   return fresh;
 }
 
+/** Which onboarding steps a member has done: ticked ones plus those that follow from activity. */
+function onboardingStepsDone(db: Db, m: Member): Record<OnboardingStepId, boolean> {
+  const auto: Partial<Record<OnboardingStepId, boolean>> = {
+    "first-hour": db.hours.some((h) => h.memberId === m.id && h.hours > 0),
+    "first-task": db.tasks.some((t) => t.assigneeId === m.id && t.status === "done"),
+    "first-meeting": db.attendance.some((a) => a.memberId === m.id && (a.state === "present" || a.state === "remote")),
+    project: db.tasks.some((t) => t.assigneeId === m.id),
+  };
+  return Object.fromEntries(
+    ONBOARDING_STEPS.map((s) => [s.id, !!(m.onboarding?.[s.id] || auto[s.id])]),
+  ) as Record<OnboardingStepId, boolean>;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<{ db: Db; prefs: Prefs } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
+  // Pop-ups for finished tasks (backend mode, live for everyone signed in).
+  const [notices, setNotices] = useState<{ id: number; text: string }[]>([]);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   // Backend mode only: who is signed in. "signed-out" and "not-member" show the sign-in screen.
   const [auth, setAuth] = useState<{ status: "loading" | "signed-out" | "not-member" | "ready"; email: string | null }>({ status: "loading", email: null });
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
+  // A new member's every sign-in plays the onboarding from the start until they finish it.
+  // Once per sign-in per tab: a reload doesn't replay it, signing in again does.
+  const [playIntro, setPlayIntro] = useState(false);
+  // When my last booked hour ends; after it, the app asks "still at the hub?" for a while.
+  const [lastHour, setLastHour] = useState<{ memberId: string; end: string } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LAST_HOUR_KEY);
+      if (raw) setLastHour(JSON.parse(raw));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (lastHour) localStorage.setItem(LAST_HOUR_KEY, JSON.stringify(lastHour));
+      else localStorage.removeItem(LAST_HOUR_KEY);
+    } catch {}
+  }, [lastHour]);
+  const [introRun, setIntroRun] = useState(0);
+  const maybePlayIntro = useCallback(
+    (db: Db, handle: string) => {
+      // New members only, on every sign-in until they finish the onboarding screens
+      // (Jure, 2026-10-25). Existing members never get it automatically.
+      const m = db.members.find((x) => x.id === handle);
+      let played: string | null = null;
+      try { played = sessionStorage.getItem(INTRO_KEY); } catch {}
+      if (m && m.onboarding !== null && !m.buddyId && !m.admin) return; // blocked until they get a buddy
+      const always = ALWAYS_ONBOARD.includes(handle);
+      if (!always && (!m || m.onboarding === null || flowDone(onboardingStepsDone(db, m)) || played === handle)) return;
+      try { sessionStorage.setItem(INTRO_KEY, handle); } catch {}
+      setPlayIntro(true);
+      setIntroRun((n) => n + 1);
+      router.replace("/onboarding");
+    },
+    [router],
+  );
 
   // Backend mode: the database is the truth. Reload after every write and every minute.
   const reload = useCallback(() => {
@@ -146,17 +218,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const email = await sessionEmail();
       if (!email) return setAuth({ status: "signed-out", email: null });
-      const handle = await myHandle(email);
+      // Anyone who signs in joins as a GO! member and starts onboarding; an admin approves at the end.
+      let handle = await myHandle(email);
+      if (!handle) {
+        await api.joinPlatform().catch(() => undefined);
+        handle = await myHandle(email);
+      }
       if (!handle) return setAuth({ status: "not-member", email });
       const db = await loadDb();
       setState({ db, prefs: { ...loadPrefs(), meId: handle } });
       setAuth({ status: "ready", email });
+      maybePlayIntro(db, handle);
       if (await syncCalendar()) void reload();
     } catch (e) {
       setError((e as Error).message);
       setAuth({ status: "signed-out", email: null });
     }
-  }, [reload]);
+  }, [reload, maybePlayIntro]);
 
   const demoSignIn = useCallback(
     (handle: string) => {
@@ -168,6 +246,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const doSignOut = useCallback(() => {
+    try { sessionStorage.removeItem(INTRO_KEY); } catch {}
     void signOut().then(() => {
       setState(null);
       setAuth({ status: "signed-out", email: null });
@@ -191,6 +270,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [reload, start]);
 
+  // Someone moved a task to Done: show who and what, for a few seconds.
+  const signedIn = auth.status === "ready";
+  useEffect(() => {
+    if (!backendEnabled || !signedIn) return;
+    return onTaskDone(async ({ taskId, actorId }) => {
+      let task = stateRef.current?.db.tasks.find((t) => t.id === taskId);
+      if (!task) {
+        await reload();
+        task = stateRef.current?.db.tasks.find((t) => t.id === taskId);
+      }
+      const who = stateRef.current?.db.members.find((m) => m.id === actorId)?.name ?? "Someone";
+      const id = Date.now() + Math.random();
+      setNotices((n) => [...n, { id, text: `${who} finished “${task?.title ?? "a task"}” · shared in Slack` }]);
+      setTimeout(() => setNotices((n) => n.filter((x) => x.id !== id)), 6000);
+      void reload();
+    });
+  }, [signedIn, reload]);
+
+  // Announcements (someone finished the onboarding screens, someone completed onboarding).
+  useEffect(() => {
+    if (!backendEnabled || !signedIn) return;
+    return onActivity((text) => {
+      const id = Date.now() + Math.random();
+      setNotices((n) => [...n, { id, text: `${text.replace(/^\S+\s/, "")} · shared in Slack` }]);
+      setTimeout(() => setNotices((n) => n.filter((x) => x.id !== id)), 7000);
+      void reload();
+    });
+  }, [signedIn, reload]);
+
+  // The hour is up while the tab is in the background: a system notification, if allowed.
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!lastHour || !state) return;
+    const due = now.getTime() >= new Date(lastHour.end).getTime() && now.getTime() - new Date(lastHour.end).getTime() < ASK_FOR_MS;
+    if (!due || asked.current === lastHour.end) return;
+    asked.current = lastHour.end;
+    try {
+      if (document.hidden && "Notification" in window && Notification.permission === "granted")
+        new Notification("Still at the hub?", { body: "Your hour is up. Open Shapers to clock in for the next one." });
+    } catch {}
+  }, [now, lastHour, state]);
+
   useEffect(() => {
     if (!state) return;
     try {
@@ -209,7 +330,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // A block that ran out without "still working?" closes at the end of the block.
+  // An hour block that has run out simply ends; its hour was booked at clock-in.
   const closing = useRef(false);
   useEffect(() => {
     if (!state || closing.current) return;
@@ -217,7 +338,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!expired.length) return;
     closing.current = true;
     mutate((db) => {
-      for (const s of expired) finishSession(db, s.memberId, new Date(s.blockEnd));
+      db.sessions = db.sessions.filter((s) => new Date(s.blockEnd) > now);
     });
     closing.current = false;
   }, [now, state, mutate]);
@@ -229,25 +350,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const member = (id: string | null) => db.members.find((m) => m.id === id);
     const me = member(prefs.meId) ?? db.members[0];
     const standingOf = (id: string) => standing(db, member(id)!, today, now);
-    const session = db.sessions.find((s) => s.memberId === me.id);
-    const stillWorkingDue = !!session && new Date(session.blockEnd).getTime() - now.getTime() <= PROMPT_BEFORE_MS;
+    // Every clock-in is a whole hour. Once it has ended (and for an hour after), ask whether
+    // they're still at the hub; yes books the next hour.
+    const hourRunning = db.sessions.some((s) => s.memberId === me.id && new Date(s.blockEnd) > now);
+    const sinceEnd = lastHour && lastHour.memberId === me.id ? now.getTime() - new Date(lastHour.end).getTime() : -1;
+    const stillWorkingDue = !hourRunning && sinceEnd >= 0 && sinceEnd < ASK_FOR_MS;
 
     const upcoming = db.meetings.filter((m) => new Date(m.end) > now).sort((a, b) => a.start.localeCompare(b.start));
     // A meeting is live only while it is going on: from its start to its end.
     const realLive = upcoming.find((m) => new Date(m.start) <= now && m.memberIds.includes(me.id));
     const liveMeetingId = realLive?.id ?? (prefs.liveMeeting ? (upcoming.find((m) => m.memberIds.includes(me.id))?.id ?? null) : null);
 
-    const onboardingDone = (m: Member) => {
-      const auto: Partial<Record<OnboardingStepId, boolean>> = {
-        "first-hour": db.hours.some((h) => h.memberId === m.id && h.hours > 0),
-        "first-task": db.tasks.some((t) => t.assigneeId === m.id && t.status === "done"),
-        "first-meeting": db.attendance.some((a) => a.memberId === m.id && (a.state === "present" || a.state === "remote")),
-        project: db.tasks.some((t) => t.assigneeId === m.id),
-      };
-      return Object.fromEntries(
-        ONBOARDING_STEPS.map((s) => [s.id, !!(m.onboarding?.[s.id] || auto[s.id])]),
-      ) as Record<OnboardingStepId, boolean>;
-    };
+    const onboardingDone = (m: Member) => onboardingStepsDone(db, m);
     const setupDone = (m: Member) => {
       if (!m.setup) return null;
       const firstHour = db.hours.some((h) => h.memberId === m.id && h.hours > 0) || db.sessions.some((x) => x.memberId === m.id);
@@ -264,6 +378,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prefs,
       authEmail: null,
       signOut: () => {},
+      playIntro: false,
+      introRun: 0,
+      introPlayed: () => {},
+      approveJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
+      setBuddy: (memberId, buddyId) => mutate((db) => { const m = db.members.find((x) => x.id === memberId); if (m) m.buddyId = buddyId; }),
+      declineJoin: (id) => mutate((db) => { db.joinRequests = (db.joinRequests ?? []).filter((r) => r.id !== id); }),
+      finishOnboardingFlow: () => {},
       now,
       today,
       me,
@@ -277,17 +398,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       stalledDays,
       setPrefs: (p) => setState((s) => (s ? { ...s, prefs: { ...s.prefs, ...p } } : s)),
       reset: () => setState({ db: seedDb(), prefs }),
-      clockIn: (taskId) =>
+      // Clock in = one hour, booked now. Pressing again inside that hour adds nothing.
+      clockIn: (taskId) => {
+        if (!hourRunning) setLastHour({ memberId: me.id, end: new Date(now.getTime() + BLOCK_MS).toISOString() });
+        try {
+          if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
+        } catch {}
         mutate((db) => {
-          if (db.sessions.some((s) => s.memberId === me.id)) return;
+          if (db.sessions.some((s) => s.memberId === me.id && new Date(s.blockEnd) > now)) return;
           db.sessions.push({ memberId: me.id, start: now.toISOString(), blockEnd: new Date(now.getTime() + BLOCK_MS).toISOString(), taskId });
-        }),
-      stillWorking: () =>
+          addHours(db, me.id, today, 1);
+          const t = taskId ? db.tasks.find((x) => x.id === taskId) : undefined;
+          if (t) t.history.push({ at: now.toISOString(), by: me.id, what: "1 h clocked" });
+        });
+      },
+      // "Still at the hub?" → yes books the next hour; ✕ just dismisses the question.
+      stillWorking: () => base.clockIn(null),
+      clockOut: () => setLastHour(null),
+      removeHour: () =>
         mutate((db) => {
-          const s = db.sessions.find((x) => x.memberId === me.id);
-          if (s) s.blockEnd = new Date(new Date(s.blockEnd).getTime() + BLOCK_MS).toISOString();
+          const s = db.sessions.find((x) => x.memberId === me.id && new Date(x.blockEnd) > now);
+          if (!s) return;
+          db.sessions = db.sessions.filter((x) => x !== s);
+          addHours(db, me.id, isoDate(new Date(s.start)), -1);
+          setLastHour(null);
         }),
-      clockOut: () => mutate((db) => finishSession(db, me.id, now)),
       logHours: (date, hours, note = "") => {
         const yesterday = addDays(today, -1);
         if (date >= yesterday) {
@@ -413,14 +548,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         mutate((db) => {
           const m = db.members.find((x) => x.id === memberId)!;
           m.tier = tier;
-          m.weeklyHours = WEEKLY[tier];
+          m.weeklyHours = tierRule(tier).weeklyHours;
           m.tierSince = today;
         }),
       addMember: ({ name, email, buddyId, series }) =>
         mutate((db) => {
           const id = email.split("@")[0] || uid();
           db.members.push({
-            id, name, email, tier: "GO!", weeklyHours: 4, admin: false, series: ["Community", ...series.filter((s) => s !== "Community")],
+            id, name, email, tier: "GO!", weeklyHours: tierRule("GO!").weeklyHours, admin: false, series: ["Community", ...series.filter((s) => s !== "Community")],
             joined: today, tierSince: today, buddyId, avatar: "sprout", onboarding: {}, onboardingProgressAt: today, seeded: true,
           });
         }),
@@ -432,7 +567,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           fresh.forEach((r, i) => {
             const since = r.tierSince ?? today;
             db.members.push({
-              id: r.email.split("@")[0] || uid(), name: r.name, email: r.email, tier: r.tier, weeklyHours: WEEKLY[r.tier], admin: false,
+              id: r.email.split("@")[0] || uid(), name: r.name, email: r.email, tier: r.tier, weeklyHours: tierRule(r.tier).weeklyHours, admin: false,
               series: ["Community"], joined: since, tierSince: since, buddyId: null, avatar: AVATARS[i % AVATARS.length],
               onboarding: null, setup: {}, seeded: true,
             });
@@ -467,20 +602,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const overrides: Partial<Ctx> = {
       authEmail: auth.email,
       signOut: doSignOut,
+      playIntro,
+      introRun,
+      introPlayed: () => setPlayIntro(false),
+      approveJoin: (id, buddyId) => { base.approveJoin(id, buddyId); remote(() => api.approveJoin(id, buddyId)); },
+      setBuddy: (memberId, buddyId) => { base.setBuddy(memberId, buddyId); remote(() => api.setBuddy(memberId, buddyId)); },
+      declineJoin: (id) => { base.declineJoin(id); remote(() => api.declineJoin(id)); },
+      finishOnboardingFlow: () => remote(api.onboardingScreensDone),
       // "View as" signs in as that demo member (it ends a Google session).
       setPrefs: (p) => {
         base.setPrefs(p);
         if (p.meId && p.meId !== prefs.meId) {
-          signInAs(p.meId)
-            .then(() => setAuth((a) => ({ ...a, email: `${p.meId}@sandbox.example` })))
-            .then(reload)
-            .catch((e: Error) => setError(e.message));
+          // Switching person is a new sign-in: start() reloads and plays the intro for new members.
+          try { sessionStorage.removeItem(INTRO_KEY); } catch {}
+          signInAs(p.meId).then(start).catch((e: Error) => setError(e.message));
         }
       },
-      reset: () => void reload(),
+      // The demo reset restarts my onboarding from day one (the database refuses admins).
+      reset: () => remote(() => api.restartOnboarding(me.id)),
       clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
-      stillWorking: () => { base.stillWorking(); remote(api.stillWorking); },
-      clockOut: () => { base.clockOut(); remote(api.clockOut); },
+      stillWorking: () => { base.stillWorking(); remote(() => api.clockIn(null)); },
+      clockOut: base.clockOut,
+      removeHour: () => { base.removeHour(); remote(api.removeHour); },
       logHours: (date, hours, note = "") => {
         const r = base.logHours(date, hours, note);
         remote(() => api.logHours(date, hours, note));
@@ -528,7 +671,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
     };
     return { ...base, ...overrides };
-  }, [state, now, mutate, remote, reload, auth.email, doSignOut]);
+  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, introRun, start, lastHour]);
 
   if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
     return (
@@ -542,13 +685,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }}
         onDemo={demoSignIn}
         onSignOut={doSignOut}
+        onRetry={() => void start()}
       />
     );
   }
   if (!value) return error ? <div className="boot backend-error">{error}</div> : <div className="boot" />;
+  // Onboarding without a buddy: nothing to do until an admin assigns one.
+  if (backendEnabled && value.me.onboarding !== null && !value.me.buddyId && !value.me.admin) {
+    return (
+      <SignIn
+        waitingForBuddy={value.me.name}
+        notMemberEmail={null}
+        busy={busy}
+        error={null}
+        onGoogle={() => {}}
+        onDemo={demoSignIn}
+        onSignOut={doSignOut}
+        onRetry={() => void start()}
+      />
+    );
+  }
   return (
     <AppCtx.Provider value={value}>
       {children}
+      {notices.length > 0 && (
+        <div className="info-toasts" role="status">
+          {notices.map((n) => (
+            <div key={n.id} className="info-toast" onClick={() => setNotices((all) => all.filter((x) => x.id !== n.id))}>
+              {n.text}
+            </div>
+          ))}
+        </div>
+      )}
       {error && (
         <div role="alert" className="backend-error" onClick={() => setError(null)}>
           {error}
@@ -565,15 +733,6 @@ function addHours(db: Db, memberId: string, date: string, hours: number) {
   else db.hours.push({ memberId, weekStart: ws, hours });
 }
 
-function finishSession(db: Db, memberId: string, end: Date) {
-  const s = db.sessions.find((x) => x.memberId === memberId);
-  if (!s) return;
-  const h = Math.round((Math.max(0, (end.getTime() - new Date(s.start).getTime()) / 3_600_000)) * 4) / 4;
-  addHours(db, memberId, isoDate(new Date(s.start)), h);
-  const t = s.taskId ? db.tasks.find((x) => x.id === s.taskId) : undefined;
-  if (t && h > 0) t.history.push({ at: end.toISOString(), by: memberId, what: `${h} h clocked` });
-  db.sessions = db.sessions.filter((x) => x.memberId !== memberId);
-}
 
 function setAttendance(db: Db, meetingId: string, memberId: string, state: AttendanceState) {
   const m = db.meetings.find((x) => x.id === meetingId)!;

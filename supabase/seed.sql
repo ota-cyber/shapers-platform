@@ -6,7 +6,7 @@ update public.app_settings set tracking_since = '2026-09-14', check_in_any_time 
 
 -- Members: sandbox roster + three new members onboarding (demo)
 insert into public.members (id, name, email, tier, is_admin, joined_on, tier_since, avatar, onboarding_active, needs_setup) values
-  ('cb522792-4a4f-58db-ae04-9915f5d3fce3', 'Ana Kovač', 'ana.kovac@sandbox.example', 'core', true, '2023-09-01', '2023-09-01', 'bust', false, false),
+  ('cb522792-4a4f-58db-ae04-9915f5d3fce3', 'Ana Petrič', 'ana.kovac@sandbox.example', 'core', true, '2023-09-01', '2023-09-01', 'bust', false, false),
   ('a41edf74-8cef-52d3-99a9-558e30dcdb55', 'Luka Novak', 'luka.novak@sandbox.example', 'core', true, '2024-01-15', '2024-01-15', 'stone', false, false),
   ('5b1c01ce-ea20-53a5-a3fc-a0be03a3e427', 'Maja Horvat', 'maja.horvat@sandbox.example', 'core', true, '2024-06-01', '2024-06-01', 'apple', false, false),
   ('d53b2d61-16c1-5e4d-a3f8-832cc7ee4bd7', 'Žiga Krajnc', 'ziga.krajnc@sandbox.example', 'impact', false, '2025-11-01', '2025-11-01', 'moon', false, false),

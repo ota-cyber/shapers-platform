@@ -40,7 +40,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 | Onboarding checklist | `from("onboarding_progress").select("*").eq("member_id", me).order("sort")` → `step_key, title, description, stage, done, admin_only, auto` |
 | Tick a step | `rpc("complete_onboarding_step", { p_step, p_done: true })`. Auto steps tick themselves; admin-only steps need an admin; a buddy can pass `p_member` |
 | Badges | `from("member_badges").select("*").eq("member_id", me)` → `badge, title, description, earned` |
-| Tier rules text | `from("tiers").select("*").order("sort")` |
+| Tier rules (hours and texts) | `from("tiers").select("*").order("sort")` |
+| Join requests (admin) | `from("join_requests").select("*").eq("status", "pending")`, `rpc("approve_join_request", { p_request, p_buddy? })`, `rpc("decline_join_request", { p_request })`; a non-member calls `rpc("request_to_join")` |
+| Join on first sign-in | `rpc("join_platform")`: creates a GO! member with a buddy; idempotent |
+| End of onboarding screens | `rpc("onboarding_screens_done")`: starter history (once) + announcement |
+| Assign a buddy (admin) | `rpc("set_buddy", { p_member, p_buddy })` |
+| Announcements (live) | Realtime inserts on `activity` (also posted to Slack) |
+| Restart onboarding (testing) | `rpc("restart_onboarding", { p_member? })`: self or admin; never an admin account |
 
 Suggested logic: show the onboarding checklist as the home screen while `onboarded` is false, then the everyday dashboard.
 
@@ -67,11 +73,9 @@ Tasks with `kind = "consequence"` are the automatic follow-ups for GO! members w
 
 | Need | Call |
 |---|---|
-| Running timer? | `rpc("current_session")` → session or `null`. Show "Still working?" when `planned_end` is close |
-| Clock in | `rpc("clock_in", { p_task_id? })`. Safe to double-tap |
-| Still working → yes | `rpc("extend_session")` (+1 hour; allowed until 15 min after `planned_end`) |
-| Clock out | `rpc("clock_out")` |
-| No answer | nothing to do: the session ends at `planned_end` by itself |
+| Running hour? | `rpc("current_session")` → the current hour block or `null` |
+| Clock in | `rpc("clock_in", { p_task_id? })`: books one whole hour at once; pressing again inside that hour adds nothing |
+| Remove a mistaken hour | `rpc("undo_clock_in")` while the hour runs |
 | Log hours manually | `rpc("log_hours", { p_date: "2026-10-24", p_hours: 1.5, p_note?, p_task_id? })`. Today and yesterday → approved; older → `status: "pending"` until an admin approves |
 | My weeks (chart) | `from("week_hours").select("*").eq("member_id", me).order("week_start")` → `hours, target, met, paused, is_current` |
 | My entries | `from("work_sessions").select("*").eq("member_id", me).order("started_at", { ascending: false })` |
