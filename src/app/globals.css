@@ -642,3 +642,5 @@ a.lb-row:hover { background: #f1f1f1; }
 html, body { overscroll-behavior: none; }
 body, .app { min-height: 100vh; min-height: 100dvh; }
 @media (min-width: 1000px) { .page { padding-bottom: 24px; } }
+/* mobile: last box sits ~1.5 cm above the bottom of the page */
+@media (max-width: 999px) { .page { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); } }
