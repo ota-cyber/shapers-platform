@@ -6,9 +6,9 @@ import type { Member } from "@/lib/types";
 import type { Standing } from "@/lib/tiers";
 import { hoursLabel } from "@/lib/dates";
 
-export function Img({ name, alt = "", className }: { name: string; alt?: string; className?: string }) {
+export function Img({ name, alt = "", className, loading = "lazy" }: { name: string; alt?: string; className?: string; loading?: "lazy" | "eager" }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={imgSrc(name)} alt={alt} className={className} loading="lazy" />;
+  return <img src={imgSrc(name)} alt={alt} className={className} loading={loading} />;
 }
 
 export function Avatar({ m, size }: { m: Member; size?: "s" | "m" }) {

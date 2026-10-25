@@ -85,7 +85,7 @@ export function SignIn(props: {
           {DEMO.map((d) => (
             <button key={d.id} disabled={props.busy} onClick={() => props.onDemo(d.id)}
               style={{ display: "grid", justifyItems: "center", alignContent: "start", gap: 10, padding: "20px 12px 18px", border: "1px solid var(--line-strong)", background: "var(--paper)", textAlign: "center", cursor: "pointer" }}>
-              <span className="avatar" style={{ width: 96, height: 96 }}><Img name={d.avatar} alt="" /></span>
+              <span className="avatar" style={{ width: 96, height: 96 }}><Img name={d.avatar} alt="" loading="eager" /></span>
               <span className="serif" style={{ fontSize: 20, lineHeight: 1.15 }}>{d.label}</span>
               <span className="mono-lc" style={{ color: "var(--muted)" }}>{d.line}</span>
             </button>
