@@ -683,3 +683,18 @@ button.wk-bar { border: 0; text-align: left; cursor: pointer; font: inherit; fon
   cursor: pointer;
 }
 .info-toast::before { content: "✓  "; }
+
+/* Onboarding: a full-screen stage above the app (onboarding/page.tsx, animated with GSAP). */
+.ob-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: var(--bg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  perspective: 900px;
+}
+.ob-stage .page { min-height: 100dvh; }
+.ob-stage .page.narrow { padding-bottom: 48px; }
+.ob-stage .ob-w, .ob-stage .ob-c { display: inline-block; }

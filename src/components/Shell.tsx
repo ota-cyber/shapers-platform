@@ -82,12 +82,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <main>{children}</main>
 
-      {stillWorkingDue && session && (
+      {stillWorkingDue && (
         <div className="toast" role="alert">
           <span aria-hidden>▲</span>
-          <span className="grow">Still working? {elapsed(session.start, now)} on the clock</span>
-          <button className="yes" onClick={stillWorking}>Yes</button>
-          <button onClick={clockOut} aria-label="Clock out">✕</button>
+          <span className="grow">Your hour is up. Still at the hub?</span>
+          <button className="yes" onClick={stillWorking}>Clock in again</button>
+          <button onClick={clockOut} aria-label="Not anymore">✕</button>
         </div>
       )}
     </div>

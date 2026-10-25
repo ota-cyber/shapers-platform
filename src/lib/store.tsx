@@ -17,6 +17,9 @@ import { SignIn } from "@/components/SignIn";
 const KEY = "shapers-ui-v5";
 const PREFS_KEY = "shapers-ui-prefs";
 const INTRO_KEY = "shapers-intro-played";
+const LAST_HOUR_KEY = "shapers-last-hour";
+/** How long after an hour ends we ask "still at the hub?". */
+const ASK_FOR_MS = 60 * 60_000;
 /** Demo rule (Jure, 2026-10-25): these members get the onboarding on every sign-in and every load, no matter what. */
 export const ALWAYS_ONBOARD = ["lea.zorman"];
 const DEFAULT_PREFS = { meId: "petra.jerman", liveMeeting: false };
@@ -151,6 +154,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // A new member's every sign-in plays the onboarding from the start until they finish it.
   // Once per sign-in per tab: a reload doesn't replay it, signing in again does.
   const [playIntro, setPlayIntro] = useState(false);
+  // When my last booked hour ends; after it, the app asks "still at the hub?" for a while.
+  const [lastHour, setLastHour] = useState<{ memberId: string; end: string } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LAST_HOUR_KEY);
+      if (raw) setLastHour(JSON.parse(raw));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (lastHour) localStorage.setItem(LAST_HOUR_KEY, JSON.stringify(lastHour));
+      else localStorage.removeItem(LAST_HOUR_KEY);
+    } catch {}
+  }, [lastHour]);
   const [introRun, setIntroRun] = useState(0);
   const maybePlayIntro = useCallback(
     (db: Db, handle: string) => {
@@ -262,6 +279,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [signedIn, reload]);
 
+  // The hour is up while the tab is in the background: a system notification, if allowed.
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!lastHour || !state) return;
+    const due = now.getTime() >= new Date(lastHour.end).getTime() && now.getTime() - new Date(lastHour.end).getTime() < ASK_FOR_MS;
+    if (!due || asked.current === lastHour.end) return;
+    asked.current = lastHour.end;
+    try {
+      if (document.hidden && "Notification" in window && Notification.permission === "granted")
+        new Notification("Still at the hub?", { body: "Your hour is up. Open Shapers to clock in for the next one." });
+    } catch {}
+  }, [now, lastHour, state]);
+
   useEffect(() => {
     if (!state) return;
     try {
@@ -300,8 +330,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const member = (id: string | null) => db.members.find((m) => m.id === id);
     const me = member(prefs.meId) ?? db.members[0];
     const standingOf = (id: string) => standing(db, member(id)!, today, now);
-    // No "still working?": every clock-in is a whole hour (2026-10-25).
-    const stillWorkingDue = false;
+    // Every clock-in is a whole hour. Once it has ended (and for an hour after), ask whether
+    // they're still at the hub; yes books the next hour.
+    const hourRunning = db.sessions.some((s) => s.memberId === me.id && new Date(s.blockEnd) > now);
+    const sinceEnd = lastHour && lastHour.memberId === me.id ? now.getTime() - new Date(lastHour.end).getTime() : -1;
+    const stillWorkingDue = !hourRunning && sinceEnd >= 0 && sinceEnd < ASK_FOR_MS;
 
     const upcoming = db.meetings.filter((m) => new Date(m.end) > now).sort((a, b) => a.start.localeCompare(b.start));
     // A meeting is live only while it is going on: from its start to its end.
@@ -345,22 +378,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPrefs: (p) => setState((s) => (s ? { ...s, prefs: { ...s.prefs, ...p } } : s)),
       reset: () => setState({ db: seedDb(), prefs }),
       // Clock in = one hour, booked now. Pressing again inside that hour adds nothing.
-      clockIn: (taskId) =>
+      clockIn: (taskId) => {
+        if (!hourRunning) setLastHour({ memberId: me.id, end: new Date(now.getTime() + BLOCK_MS).toISOString() });
+        try {
+          if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
+        } catch {}
         mutate((db) => {
           if (db.sessions.some((s) => s.memberId === me.id && new Date(s.blockEnd) > now)) return;
           db.sessions.push({ memberId: me.id, start: now.toISOString(), blockEnd: new Date(now.getTime() + BLOCK_MS).toISOString(), taskId });
           addHours(db, me.id, today, 1);
           const t = taskId ? db.tasks.find((x) => x.id === taskId) : undefined;
           if (t) t.history.push({ at: now.toISOString(), by: me.id, what: "1 h clocked" });
-        }),
-      stillWorking: () => {},
-      clockOut: () => {},
+        });
+      },
+      // "Still at the hub?" → yes books the next hour; ✕ just dismisses the question.
+      stillWorking: () => base.clockIn(null),
+      clockOut: () => setLastHour(null),
       removeHour: () =>
         mutate((db) => {
           const s = db.sessions.find((x) => x.memberId === me.id && new Date(x.blockEnd) > now);
           if (!s) return;
           db.sessions = db.sessions.filter((x) => x !== s);
           addHours(db, me.id, isoDate(new Date(s.start)), -1);
+          setLastHour(null);
         }),
       logHours: (date, hours, note = "") => {
         const yesterday = addDays(today, -1);
@@ -559,8 +599,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // The demo reset restarts my onboarding from day one (the database refuses admins).
       reset: () => remote(() => api.restartOnboarding(me.id)),
       clockIn: (taskId) => { base.clockIn(taskId); remote(() => api.clockIn(taskId)); },
-      stillWorking: () => {},
-      clockOut: () => {},
+      stillWorking: () => { base.stillWorking(); remote(() => api.clockIn(null)); },
+      clockOut: base.clockOut,
       removeHour: () => { base.removeHour(); remote(api.removeHour); },
       logHours: (date, hours, note = "") => {
         const r = base.logHours(date, hours, note);
@@ -609,7 +649,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       resolveGraduation: (memberId, approve) => { base.resolveGraduation(memberId, approve); remote(() => api.resolveGraduation(memberId, approve)); },
     };
     return { ...base, ...overrides };
-  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, introRun, start]);
+  }, [state, now, mutate, remote, auth.email, doSignOut, playIntro, introRun, start, lastHour]);
 
   if (backendEnabled && (auth.status === "signed-out" || auth.status === "not-member")) {
     return (
