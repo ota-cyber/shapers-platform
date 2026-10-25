@@ -4,11 +4,14 @@
 // not on the roster. Members sign in with Google; the demo people sign in with
 // the demo password so anyone can try the platform.
 
+import { Img } from "@/components/ui";
+
+// Names and avatars match the members table (supabase/seed.sql).
 const DEMO = [
-  { id: "petra.jerman", label: "Petra", line: "GO! member, close to Impact" },
-  { id: "lea.zorman", label: "Lea", line: "New, onboarding" },
-  { id: "rok.golob", label: "Rok", line: "Impact, buddy of two new members" },
-  { id: "ana.kovac", label: "Ana", line: "Admin" },
+  { id: "petra.jerman", label: "Petra Jerman", avatar: "dove", line: "GO! member, close to Impact" },
+  { id: "lea.zorman", label: "Lea Zorman", avatar: "sprout", line: "New, onboarding" },
+  { id: "rok.golob", label: "Rok Golob", avatar: "key", line: "Impact, buddy of two new members" },
+  { id: "ana.kovac", label: "Ana Petrič", avatar: "bust", line: "Admin" },
 ];
 
 export function SignIn(props: {
@@ -64,12 +67,13 @@ export function SignIn(props: {
         {props.error && <p className="mono-lc" style={{ color: "var(--ink)", marginTop: 16 }}>{props.error}</p>}
 
         <div className="mono" style={{ color: "var(--muted)", margin: "44px 0 12px" }}>Or try the demo as</div>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {DEMO.map((d) => (
-            <button key={d.id} className="btn outline block" disabled={props.busy} onClick={() => props.onDemo(d.id)}
-              style={{ display: "flex", justifyContent: "space-between", gap: 12, textAlign: "left" }}>
-              <span>{d.label}</span>
-              <span className="mono-lc" style={{ opacity: 0.7 }}>{d.line}</span>
+            <button key={d.id} disabled={props.busy} onClick={() => props.onDemo(d.id)}
+              style={{ display: "grid", justifyItems: "center", alignContent: "start", gap: 10, padding: "20px 12px 18px", border: "1px solid var(--line-strong)", background: "var(--paper)", textAlign: "center", cursor: "pointer" }}>
+              <span className="avatar" style={{ width: 96, height: 96 }}><Img name={d.avatar} alt="" /></span>
+              <span className="serif" style={{ fontSize: 20, lineHeight: 1.15 }}>{d.label}</span>
+              <span className="mono-lc" style={{ color: "var(--muted)" }}>{d.line}</span>
             </button>
           ))}
         </div>
